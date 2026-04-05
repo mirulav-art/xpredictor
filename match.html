@@ -942,8 +942,9 @@
 
       .sim-1x2-odds {
         font-family: "DM Mono", monospace;
-        font-size: 13px;
-        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
         font-weight: 500;
       }
 
@@ -1006,12 +1007,26 @@
       }
       .sim-ou-odd {
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
         background: var(--surface2);
-        padding: 1px 5px;
-        border-radius: 3px;
+        padding: 2px 6px;
+        border-radius: 4px;
         border: 1px solid var(--border);
+      }
+      .sim-ou-cells-wrap {
+        display: contents;
+      }
+      .sim-ou-cell-label {
+        display: none;
+        font-family: "DM Mono", monospace;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+        text-align: center;
+        margin-bottom: 5px;
       }
       .sim-ou-bar-wrap {
         height: 6px;
@@ -1026,14 +1041,16 @@
 
       .sim-btts-odds {
         font-family: "DM Mono", monospace;
-        font-size: 11px;
-        color: var(--muted);
-        margin-top: 1px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        margin-top: 2px;
       }
       .sim-score-odds {
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
         text-align: right;
       }
 
@@ -1266,14 +1283,54 @@
         .sim-1x2-pct { font-size: 20px; }
         .sim-1x2-odds { font-size: 11px; }
 
-        /* O/U */
-        .sim-ou-cols { grid-template-columns: 30px 1fr 1fr 1fr; gap: 4px; }
-        .sim-ou-col-label { font-size: 9px; }
-        .sim-ou-row-new { grid-template-columns: 30px 1fr 1fr 1fr; gap: 4px; }
-        .sim-ou-line-badge { width: 26px; height: 26px; font-size: 10px; }
-        .sim-ou-pct-over { font-size: 11px; }
-        .sim-ou-pct-under { font-size: 10px; }
-        .sim-ou-odd { font-size: 9px; padding: 1px 3px; }
+        /* O/U - card layout pe mobil */
+        .sim-ou-cols { display: none; }
+        .sim-ou-row-new {
+          display: block;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 10px 12px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid var(--border);
+        }
+        .sim-ou-row-new:last-child { margin-bottom: 0; }
+        .sim-ou-line-badge {
+          display: block;
+          width: 100%;
+          font-family: "DM Mono", monospace;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          color: var(--accent);
+          background: rgba(37,99,235,0.07);
+          border-radius: 6px;
+          padding: 5px 0;
+          margin-bottom: 10px;
+          text-align: center;
+        }
+        .sim-ou-cells-wrap {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 6px;
+        }
+        .sim-ou-cell-label { display: block; }
+        .sim-ou-cell-new {
+          background: var(--surface2);
+          border-radius: 8px;
+          padding: 8px 4px;
+          align-items: center;
+        }
+        .sim-ou-over-block, .sim-ou-under-block {
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+        }
+        .sim-ou-pct-over { font-size: 13px; }
+        .sim-ou-pct-under { font-size: 12px; }
+        .sim-ou-odd { font-size: 11px; padding: 2px 4px; }
+        .sim-ou-bar-wrap { margin: 4px 0; height: 5px; }
 
         /* BTTS + Scores */
         .sim-block-row { grid-template-columns: 1fr; }
@@ -2135,8 +2192,9 @@
           .slice(0, 8)
           .map(([score, count]) => ({ score, pct: (count / r.N) * 100 }));
 
-        function ouCell(d) {
+        function ouCell(d, label) {
           return `<div class="sim-ou-cell-new">
+      ${label ? `<div class="sim-ou-cell-label">${label}</div>` : ''}
       <div class="sim-ou-over-block">
         <span class="sim-ou-pct-over">${d.over}%</span>
         <span class="sim-ou-odd">${d.overOdds}</span>
@@ -2199,8 +2257,10 @@
             t = ou(r.totalDist, line),
             a = ou(r.aDist, line);
           return `<div class="sim-ou-row-new">
-          <div class="sim-ou-line-badge">${line}</div>
-          ${ouCell(h)}${ouCell(t)}${ouCell(a)}
+          <div class="sim-ou-line-badge">Over / Under ${line}</div>
+          <div class="sim-ou-cells-wrap">
+            ${ouCell(h, 'Home')}${ouCell(t, 'Total')}${ouCell(a, 'Away')}
+          </div>
         </div>`;
         })
         .join("")}
