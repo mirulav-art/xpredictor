@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
 <title>Match Details</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -994,9 +995,9 @@ function renderHero() {
 
   const isFinished = event.status?.type === 'finished';
   const isNS = event.status?.type === 'notstarted';
-  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`);
-  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`);
-  const flagUrl = proxyImg(`https://www.sofascore.com/static/images/flags/${event.tournament?.category?.flag}.png`);
+  const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`;
+  const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`;
+  const flagUrl = `https://www.sofascore.com/static/images/flags/${event.tournament?.category?.flag}.png`;
 
   const statusLabels = { finished: 'Final', notstarted: 'Neprogramat', postponed: 'Amânat', canceled: 'Anulat' };
 
@@ -1107,8 +1108,8 @@ async function loadForm() {
   const tournamentId = event.tournament?.uniqueTournament?.id;
   const homeTeamId = event.homeTeam?.id;
   const awayTeamId = event.awayTeam?.id;
-  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${homeTeamId}/image`);
-  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${awayTeamId}/image`);
+  const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${homeTeamId}/image`;
+  const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${awayTeamId}/image`;
 
   const [homeEvents, awayEvents] = await Promise.all([
     fetchLastMatches(homeTeamId),
@@ -1317,8 +1318,8 @@ async function loadLineups() {
   currentLineupData = data;
 
   document.getElementById('lineupsSection').style.display = 'grid';
-  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`);
-  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`);
+  const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`;
+  const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`;
   const confirmed = data.confirmed === true;
   renderPitch('homePitch', data.home, event.homeTeam?.name, homeLogoUrl, true, confirmed);
   renderPitch('awayPitch', data.away, event.awayTeam?.name, awayLogoUrl, false, confirmed);
@@ -1562,8 +1563,8 @@ async function loadSimulation() {
   const homeTeamId = event.homeTeam?.id;
   const awayTeamId = event.awayTeam?.id;
   const currentTs = event.startTimestamp;
-  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${homeTeamId}/image`);
-  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${awayTeamId}/image`);
+  const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${homeTeamId}/image`;
+  const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${awayTeamId}/image`;
 
   document.getElementById('simVerifySection').innerHTML =
     `<div id="simResultsSection" class="sim-results-section"><div class="sim-results-loading"><div class="spinner"></div><span>Se încarcă datele...</span></div></div>`;

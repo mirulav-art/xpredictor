@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
 <title>Football Matches</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -727,7 +728,7 @@ function renderMatches() {
     html += `
       <div class="league-group" style="animation-delay: ${gi * 0.03}s">
         <div class="league-header" onclick="toggleGroup(this)">
-          <img class="league-flag" src="${proxyImg(`https://www.sofascore.com/static/images/flags/${group.flag}.png`)}"
+          <img class="league-flag" src="https://www.sofascore.com/static/images/flags/${group.flag}.png"
                onerror="this.style.display='none'" alt="">
           <span class="league-name">${group.name}</span>
           <span class="league-category">${group.category}</span>
@@ -789,8 +790,8 @@ function renderMatchRow(e) {
     canceled: 'ANULAT'
   };
 
-  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${e.homeTeam?.id}/image`);
-  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${e.awayTeam?.id}/image`);
+  const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${e.homeTeam?.id}/image`;
+  const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${e.awayTeam?.id}/image`;
 
   return `
     <div class="match-row" onclick="openMatch(${e.id})">
