@@ -1238,16 +1238,20 @@
         .match-tab { padding: 8px 14px; font-size: 12px; }
 
         /* Form / stats */
-        .content { padding: 16px; }
-        .content-grid { grid-template-columns: 1fr; }
-        .lineups-section { padding: 16px 16px 0; }
-        .lineups-section > .content-grid { grid-template-columns: 1fr; }
-        .section-title { font-size: 11px; }
+        .content { padding: 16px; grid-template-columns: 1fr; }
+        .lineups-section { padding: 16px 16px 0; grid-template-columns: 1fr; }
 
         /* Lineups */
-        .pitch-wrap { padding: 16px; }
-        .pitch-side-title { font-size: 12px; }
-        .player-name { font-size: 11px; }
+        .pitch-wrapper { width: 100%; }
+        .pitch-team-name { font-size: 13px; }
+        .pitch-formation-badge { font-size: 10px; }
+        .player-dot text { font-size: 5px; }
+
+        /* Form rows */
+        .form-match-row { padding: 8px 12px; gap: 8px; }
+        .form-match-teams { font-size: 11px; }
+        .form-match-score { font-size: 12px; }
+        .form-match-meta { font-size: 10px; }
 
         /* Simulation */
         .sim-verify-section { padding: 16px; }
