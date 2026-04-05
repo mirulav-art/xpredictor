@@ -1888,6 +1888,54 @@
         return +(clamped * 40).toFixed(1);
       }
 
+      function calcFatigue(allEvents, currentTs) {
+        const past = allEvents
+          .filter(e => e.startTimestamp < currentTs && e.status?.type === 'finished')
+          .sort((a, b) => b.startTimestamp - a.startTimestamp)
+          .slice(0, 5);
+        if (past.length < 2) return { avgRest: 7, matchCount: past.length };
+        const newest = past[0].startTimestamp;
+        const oldest = past[past.length - 1].startTimestamp;
+        const avgRest = (newest - oldest) / ((past.length - 1) * 86400);
+        return { avgRest: Math.round(avgRest * 10) / 10, matchCount: past.length };
+      }
+
+      function calcLineupContinuity(dataArr) {
+        const valid = dataArr.filter(d => d.lineupSim != null);
+        if (!valid.length) return 50;
+        return valid.reduce((s, d) => s + d.lineupSim.pct, 0) / valid.length;
+      }
+
+      function calcRelativeContinuityMult(homeCont, awayCont) {
+        const diff = homeCont - awayCont;
+        const absDiff = Math.abs(diff);
+        if (absDiff < 5) return { homeMult: 1.0, awayMult: 1.0 };
+        let pct;
+        if      (absDiff >= 30) pct = 0.15;
+        else if (absDiff >= 20) pct = 0.12;
+        else if (absDiff >= 10) pct = 0.09;
+        else if (absDiff >= 5)  pct = 0.06;
+        else                    pct = 0.03;
+        return diff > 0
+          ? { homeMult: 1 + pct, awayMult: 1 - pct }
+          : { homeMult: 1 - pct, awayMult: 1 + pct };
+      }
+
+      function calcRelativeFatigueMult(homeAvgRest, awayAvgRest) {
+        const diff = homeAvgRest - awayAvgRest;
+        const absDiff = Math.abs(diff);
+        if (absDiff < 1) return { homeMult: 1.0, awayMult: 1.0 };
+        let pct;
+        if      (absDiff >= 5) pct = 0.15;
+        else if (absDiff >= 4) pct = 0.12;
+        else if (absDiff >= 3) pct = 0.09;
+        else if (absDiff >= 2) pct = 0.06;
+        else                   pct = 0.03;
+        return diff > 0
+          ? { homeMult: 1 + pct, awayMult: 1 - pct }
+          : { homeMult: 1 - pct, awayMult: 1 + pct };
+      }
+
       function calcFormFactor(dataArr, ppgActualOpp, maxDiff) {
         const THRESHOLD = maxDiff * 0.15;
         for (const d of dataArr) {
@@ -1997,8 +2045,31 @@
                 const isFirst = m < dur1H;
                 const lhBase = isFirst ? lambdaHome1H / dur1H : lambdaHome2H / dur2H;
                 const laBase = isFirst ? lambdaAway1H / dur1H : lambdaAway2H / dur2H;
-                const lh = lhBase * (hStreak > 3 ? 1.15 : 1);
-                const la = laBase * (aStreak > 3 ? 1.15 : 1);
+
+                const diff = hg - ag;
+                let lhFactor = 1, laFactor = 1;
+                // Home game state
+                if (diff < 0)       { lhFactor *= 1.15; laFactor *= 1.08; } // home losing: atacă mai mult, lasă spații
+                else if (diff === 1) { lhFactor *= 0.95; laFactor *= 0.95; } // home +1: conservator, apără mai bine
+                else if (diff >= 2)  { lhFactor *= 0.92; laFactor *= 0.90; } // home +2
+                // Away game state (mirrored)
+                if (diff > 0)        { laFactor *= 1.15; lhFactor *= 1.08; } // away losing: atacă mai mult, lasă spații
+                else if (diff === -1) { laFactor *= 0.95; lhFactor *= 0.95; } // away +1
+                else if (diff <= -2)  { laFactor *= 0.92; lhFactor *= 0.90; } // away +2
+                // Ultimele 15 minute (min 75+)
+                if (m >= 75) {
+                  if (diff === 0) {
+                    lhFactor *= 1.10; laFactor *= 1.10;
+                    lhFactor *= 1.07; laFactor *= 1.07;
+                  } else if (diff < 0) {
+                    lhFactor *= 1.10; laFactor *= 1.07;
+                  } else {
+                    laFactor *= 1.10; lhFactor *= 1.07;
+                  }
+                }
+
+                const lh = lhBase * (hStreak > 3 ? 1.15 : 1) * lhFactor;
+                const la = laBase * (aStreak > 3 ? 1.15 : 1) * laFactor;
                 if (Math.random() < 1 - Math.exp(-lh)) hg++;
                 if (Math.random() < 1 - Math.exp(-la)) ag++;
               }
@@ -2197,7 +2268,10 @@
         function extractPlayerIds(lineupSide) {
           if (!lineupSide?.players) return new Set();
           return new Set(
-            lineupSide.players.map((p) => p.player?.id).filter(Boolean),
+            lineupSide.players
+              .filter((p) => !p.substitute)
+              .map((p) => p.player?.id)
+              .filter(Boolean),
           );
         }
 
@@ -2319,8 +2393,8 @@
         calcFormFactor(awayData, ppgActualOppAway, maxDiff);
 
         // ── Ajustare xG/xGA per meci pe baza formei contextuale ──
-        const XG_ADJ  = { weaker: { W: +7, D: -10, L: -20 }, similar: { W: +13, D: +10, L: -12 }, stronger: { W: +20, D: +15, L: -5 } };
-        const XGA_ADJ = { weaker: { W: -7, D: +10, L: +20 }, similar: { W: -13, D: -10, L: +12 }, stronger: { W: -20, D: -15, L: +5 } };
+        const XG_ADJ  = { weaker: { W: +7, D: -10, L: -20 }, similar: { W: +13, D: +5, L: -9 }, stronger: { W: +20, D: +15, L: -5 } };
+        const XGA_ADJ = { weaker: { W: -7, D: +10, L: +20 }, similar: { W: -13, D: -5, L: +9 }, stronger: { W: -20, D: -15, L: +5 } };
         function applyFormAdj(dataArr) {
           for (const d of dataArr) {
             if (d.formInfo) {
@@ -2346,7 +2420,7 @@
                 1 - Math.abs(d.ppgPast - ppgActualOpp) / maxDiff,
               );
             }
-            return lf;
+            return lf * (pf * 0.4 + 0.6);
           });
           const sum = raw.reduce((a, b) => a + b, 0);
           const norm =
@@ -2662,29 +2736,103 @@
   `,
         );
 
-        // ── Lambda combinat: xG ofensiv propriu + xGA defensiv al adversarului ──
-        const lambdaHomeCombined = (homeXGFinal + awayXGAFinal) / 2;
-        const lambdaAwayCombined = (awayXGFinal + homeXGAFinal) / 2;
+        // ── Fatigue ──
+        const homeFatigue = calcFatigue(homeEvents, event.startTimestamp);
+        const awayFatigue = calcFatigue(awayEvents, event.startTimestamp);
+        const { homeMult: homeFatigueMult, awayMult: awayFatigueMult } =
+          calcRelativeFatigueMult(homeFatigue.avgRest, awayFatigue.avgRest);
 
-        // ── Split pe reprize pe baza ratio-ului xG1H/xG2H ──
-        const homeAvgXG1H = wAvg(homeData, "xG1H");
-        const homeAvgXG2H = wAvg(homeData, "xG2H");
-        const homeHalfTotal = homeAvgXG1H + homeAvgXG2H;
-        const homeRatio1H = homeHalfTotal > 0 ? homeAvgXG1H / homeHalfTotal : 0.5;
-        const lambdaHome1H = lambdaHomeCombined * homeRatio1H;
-        const lambdaHome2H = lambdaHomeCombined * (1 - homeRatio1H);
+        // ── Continuitate lineup ──
+        const homeContinuity = calcLineupContinuity(homeData);
+        const awayContinuity = calcLineupContinuity(awayData);
+        const { homeMult: homeContMult, awayMult: awayContMult } =
+          calcRelativeContinuityMult(homeContinuity, awayContinuity);
 
-        const awayAvgXG1H = wAvg(awayData, "xG1H");
-        const awayAvgXG2H = wAvg(awayData, "xG2H");
-        const awayHalfTotal = awayAvgXG1H + awayAvgXG2H;
-        const awayRatio1H = awayHalfTotal > 0 ? awayAvgXG1H / awayHalfTotal : 0.5;
-        const lambdaAway1H = lambdaAwayCombined * awayRatio1H;
-        const lambdaAway2H = lambdaAwayCombined * (1 - awayRatio1H);
+        // Combinat aditiv: fatigue + continuitate
+        const homeTotalMult = 1 + (homeFatigueMult - 1) + (homeContMult - 1);
+        const awayTotalMult = 1 + (awayFatigueMult - 1) + (awayContMult - 1);
 
-        const lambdaHome1HFinal = lambdaHome1H;
-        const lambdaHome2HFinal = lambdaHome2H;
-        const lambdaAway1HFinal = lambdaAway1H;
-        const lambdaAway2HFinal = lambdaAway2H;
+        const contLabel = (cont, mult) => {
+          const pct = Math.round((mult - 1) * 100);
+          const sign = pct >= 0 ? '+' : '';
+          const cls = pct > 0 ? 'sim-boost-text' : pct < 0 ? 'sim-nerf-text' : '';
+          const effect = pct !== 0 ? ` → <span class="${cls}">${sign}${pct}%</span>` : ` → <span>⚖️ Neutru</span>`;
+          return `Continuitate lineup: <b>${cont.toFixed(1)}%</b>${effect}`;
+        };
+
+        document.getElementById("simVerifySection").insertAdjacentHTML("beforeend", `
+          <div class="sim-xg-summary">
+            <div class="sim-xg-summary-title">Continuitate echipă de start</div>
+            <div class="sim-xg-row">
+              <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
+              <span>${event.homeTeam?.name}</span>
+              <span>${contLabel(homeContinuity, homeContMult)}</span>
+            </div>
+            <div class="sim-xg-row">
+              <img src="${awayLogoUrl}" onerror="this.src=''" alt="">
+              <span>${event.awayTeam?.name}</span>
+              <span>${contLabel(awayContinuity, awayContMult)}</span>
+            </div>
+          </div>`);
+
+        const homeXGFinalF  = homeXGFinal  * homeTotalMult;
+        const homeXGAFinalF = homeXGAFinal * (2 - homeTotalMult);
+        const awayXGFinalF  = awayXGFinal  * awayTotalMult;
+        const awayXGAFinalF = awayXGAFinal * (2 - awayTotalMult);
+
+        const fatigueLabel = (f, mult) => {
+          const pct = Math.round((mult - 1) * 100);
+          const sign = pct >= 0 ? '+' : '';
+          const cls = pct > 0 ? 'sim-boost-text' : pct < 0 ? 'sim-nerf-text' : '';
+          const effect = pct !== 0 ? ` → <span class="${cls}">${sign}${pct}%</span>` : ` → <span>⚖️ Neutru</span>`;
+          return `Medie odihnă între ultimele ${f.matchCount} meciuri: <b>${f.avgRest} zile</b>${effect}`;
+        };
+
+        document.getElementById("simVerifySection").insertAdjacentHTML("beforeend", `
+          <div class="sim-xg-summary">
+            <div class="sim-xg-summary-title">Oboseală (toate competițiile)</div>
+            <div class="sim-xg-row">
+              <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
+              <span>${event.homeTeam?.name}</span>
+              <span>${fatigueLabel(homeFatigue, homeFatigueMult)}</span>
+            </div>
+            <div class="sim-xg-row">
+              <img src="${awayLogoUrl}" onerror="this.src=''" alt="">
+              <span>${event.awayTeam?.name}</span>
+              <span>${fatigueLabel(awayFatigue, awayFatigueMult)}</span>
+            </div>
+          </div>`);
+
+        // ── Lambda per repriză: xG1H/2H propriu + xGA1H/2H adversar ──
+        const homeAvgXG1H  = wAvg(homeData, "xG1H");
+        const homeAvgXG2H  = wAvg(homeData, "xG2H");
+        const homeAvgXGA1H = wAvg(homeData, "xGA1H");
+        const homeAvgXGA2H = wAvg(homeData, "xGA2H");
+        const awayAvgXG1H  = wAvg(awayData, "xG1H");
+        const awayAvgXG2H  = wAvg(awayData, "xG2H");
+        const awayAvgXGA1H = wAvg(awayData, "xGA1H");
+        const awayAvgXGA2H = wAvg(awayData, "xGA2H");
+
+        // Factor blend proporțional din total (nu avem goluri pe repriză)
+        const homeXGBlend  = homeAvgXG  > 0 ? homeXGFinal  / homeAvgXG  : 1;
+        const awayXGBlend  = awayAvgXG  > 0 ? awayXGFinal  / awayAvgXG  : 1;
+        const homeXGABlend = homeAvgXGA > 0 ? homeXGAFinal / homeAvgXGA : 1;
+        const awayXGABlend = awayAvgXGA > 0 ? awayXGAFinal / awayAvgXGA : 1;
+
+        // Per repriză cu blend + fatigue + continuitate
+        const hXG1H  = homeAvgXG1H  * homeXGBlend  * homeTotalMult;
+        const hXG2H  = homeAvgXG2H  * homeXGBlend  * homeTotalMult;
+        const hXGA1H = homeAvgXGA1H * homeXGABlend * (2 - homeTotalMult);
+        const hXGA2H = homeAvgXGA2H * homeXGABlend * (2 - homeTotalMult);
+        const aXG1H  = awayAvgXG1H  * awayXGBlend  * awayTotalMult;
+        const aXG2H  = awayAvgXG2H  * awayXGBlend  * awayTotalMult;
+        const aXGA1H = awayAvgXGA1H * awayXGABlend * (2 - awayTotalMult);
+        const aXGA2H = awayAvgXGA2H * awayXGABlend * (2 - awayTotalMult);
+
+        const lambdaHome1HFinal = (hXG1H + aXGA1H) / 2;
+        const lambdaHome2HFinal = (hXG2H + aXGA2H) / 2;
+        const lambdaAway1HFinal = (aXG1H + hXGA1H) / 2;
+        const lambdaAway2HFinal = (aXG2H + hXGA2H) / 2;
 
         // ── Simulare Monte Carlo ──
         const lambdaHome = homeXGFinal;
