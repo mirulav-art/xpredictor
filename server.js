@@ -21,6 +21,11 @@ app.get("/", (req, res) => {
 app.get("/cache/:key", (req, res) => {
   const file = path.join(CACHE_DIR, req.params.key + ".json");
   if (!fs.existsSync(file)) return res.status(404).json({ error: "not found" });
+  // TTL 30 minute pentru cache-ul listei de meciuri
+  if (req.params.key.startsWith("matches_")) {
+    const age = Date.now() - fs.statSync(file).mtimeMs;
+    if (age > 30 * 60 * 1000) return res.status(404).json({ error: "expired" });
+  }
   res.sendFile(file);
 });
 
