@@ -2163,16 +2163,39 @@
               if (ag < aDist.length) aDist[ag]++;
             }
 
+            // ── Dixon-Coles: boost scoruri mici ──
+            const DC = 1.07;
+            for (const key of ['0-0', '1-0', '0-1']) {
+              if (scores[key]) scores[key] *= DC;
+            }
+            // Recompute toate statisticile din scores corectat
+            let dcN = 0, dcHW = 0, dcD = 0, dcAW = 0, dcBtts = 0;
+            const dcHDist = new Array(12).fill(0);
+            const dcADist = new Array(12).fill(0);
+            const dcTDist = new Array(16).fill(0);
+            for (const [key, cnt] of Object.entries(scores)) {
+              const [h, a] = key.split('-').map(Number);
+              dcN += cnt;
+              if (h > a) dcHW += cnt;
+              else if (h === a) dcD += cnt;
+              else dcAW += cnt;
+              if (h > 0 && a > 0) dcBtts += cnt;
+              if (h < dcHDist.length) dcHDist[h] += cnt;
+              if (a < dcADist.length) dcADist[a] += cnt;
+              const tg = h + a;
+              if (tg < dcTDist.length) dcTDist[tg] += cnt;
+            }
+
             resolve({
-              N,
-              homeWinPct: (homeWins / N) * 100,
-              drawPct: (draws / N) * 100,
-              awayWinPct: (awayWins / N) * 100,
-              bttsPct: (btts / N) * 100,
+              N: dcN,
+              homeWinPct: (dcHW / dcN) * 100,
+              drawPct: (dcD / dcN) * 100,
+              awayWinPct: (dcAW / dcN) * 100,
+              bttsPct: (dcBtts / dcN) * 100,
               scores,
-              totalDist: totalDist.map((c) => (c / N) * 100),
-              hDist: hDist.map((c) => (c / N) * 100),
-              aDist: aDist.map((c) => (c / N) * 100),
+              totalDist: dcTDist.map((c) => (c / dcN) * 100),
+              hDist: dcHDist.map((c) => (c / dcN) * 100),
+              aDist: dcADist.map((c) => (c / dcN) * 100),
             });
           }, 0),
         );
