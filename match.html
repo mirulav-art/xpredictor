@@ -951,10 +951,10 @@
       .sim-ou-cols {
         display: grid;
         grid-template-columns: 36px 1fr 1fr 1fr;
-        gap: 6px;
+        gap: 0;
         margin-bottom: 6px;
         padding-bottom: 6px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 2px solid var(--border);
       }
       .sim-ou-col-label {
         font-family: "DM Mono", monospace;
@@ -963,17 +963,26 @@
         letter-spacing: 0.5px;
         color: var(--muted);
         text-align: center;
+        padding: 4px 8px;
+        border-left: 1px solid var(--border);
+      }
+      .sim-ou-col-label:first-child {
+        border-left: none;
       }
       .sim-ou-row-new {
         display: grid;
         grid-template-columns: 36px 1fr 1fr 1fr;
-        gap: 6px;
+        gap: 0;
         align-items: center;
         padding: 8px 0;
         border-bottom: 1px solid var(--border);
       }
       .sim-ou-row-new:last-child {
         border-bottom: none;
+      }
+      .sim-ou-cell-new {
+        border-left: 1px solid var(--border);
+        padding: 0 10px;
       }
       .sim-ou-line-badge {
         font-family: "Bebas Neue", sans-serif;
@@ -1027,6 +1036,9 @@
         color: var(--muted);
         text-align: center;
         margin-bottom: 5px;
+      }
+      .sim-ou-line-prefix {
+        display: none;
       }
       .sim-ou-bar-wrap {
         height: 6px;
@@ -1316,11 +1328,13 @@
           gap: 6px;
         }
         .sim-ou-cell-label { display: block; }
+        .sim-ou-line-prefix { display: inline; }
         .sim-ou-cell-new {
           background: var(--surface2);
           border-radius: 8px;
           padding: 8px 4px;
           align-items: center;
+          border-left: none;
         }
         .sim-ou-over-block, .sim-ou-under-block {
           flex-direction: column;
@@ -1329,7 +1343,13 @@
         }
         .sim-ou-pct-over { font-size: 13px; }
         .sim-ou-pct-under { font-size: 12px; }
-        .sim-ou-odd { font-size: 11px; padding: 2px 4px; }
+        .sim-ou-odd {
+          font-size: 11px;
+          padding: 2px 6px;
+          background: var(--surface);
+          border-color: var(--accent);
+          color: var(--accent);
+        }
         .sim-ou-bar-wrap { margin: 4px 0; height: 5px; }
 
         /* BTTS + Scores */
@@ -2257,7 +2277,9 @@
             t = ou(r.totalDist, line),
             a = ou(r.aDist, line);
           return `<div class="sim-ou-row-new">
-          <div class="sim-ou-line-badge">Over / Under ${line}</div>
+          <div class="sim-ou-line-badge">
+            <span class="sim-ou-line-prefix">Over / Under </span>${line}
+          </div>
           <div class="sim-ou-cells-wrap">
             ${ouCell(h, 'Home')}${ouCell(t, 'Total')}${ouCell(a, 'Away')}
           </div>
