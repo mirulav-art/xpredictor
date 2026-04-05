@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(node server.js)",
+      "Bash(node -e \"const d=require\\(''./cache/match_current.json''\\); console.log\\(''Home:'', d.homeTeam?.name, ''id:'', d.homeTeam?.id\\); console.log\\(''Away:'', d.awayTeam?.name, ''id:'', d.awayTeam?.id\\);\")",
+      "Bash(node -e \"const d=require\\(''C:/Users/yomih/Desktop/predictorAPI/cache/match_current.json''\\); console.log\\(''Home:'', d.homeTeam?.name, ''id:'', d.homeTeam?.id\\); console.log\\(''Away:'', d.awayTeam?.name, ''id:'', d.awayTeam?.id\\);\")",
+      "Bash(node -e \":*)",
+      "Bash(node -e \"const http = require\\(''http''\\); http.get\\(''http://localhost:3000'', \\(res\\) => { console.log\\(''Server status:'', res.statusCode\\); }\\).on\\(''error'', \\(e\\) => { console.log\\(''Server not running:'', e.message\\); }\\)\")",
+      "Bash(ls C:/Users/yomih/Desktop/predictorAPI/cache/matches_*.json)",
+      "Bash(node -e \"const d = require\\(''fs''\\).readFileSync\\(''cache/matches_2026-03-22.json'',''utf8''\\); const j = JSON.parse\\(d\\); console.log\\(''Total events:'', j.events?.length || 0\\); if\\(j.events?.length\\) { j.events.slice\\(0,3\\).forEach\\(e => console.log\\(e.id, e.homeTeam?.name, ''vs'', e.awayTeam?.name, ''status:'', e.status?.type\\)\\); }\")",
+      "Bash(curl -s \"https://sportapi7.p.rapidapi.com/api/v1/unique-tournament/17/season/52186/standings/total\" -H \"x-rapidapi-host: sportapi7.p.rapidapi.com\" -H \"x-rapidapi-key: 7913c774b3mshf3efcfbca776bf0p174928jsnad84967269fd\")",
+      "Bash(curl -s \"https://sportapi7.p.rapidapi.com/api/v1/event/12436289/statistics\" -H \"x-rapidapi-host: sportapi7.p.rapidapi.com\" -H \"x-rapidapi-key: 7913c774b3mshf3efcfbca776bf0p174928jsnad84967269fd\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); rows=d[''''standings''''][0][''''rows'''']; print\\([{''''id'''':r[''''team''''][''''id''''],''''name'''':r[''''team''''][''''name'''']} for r in rows[:5]]\\)\")",
+      "Bash(curl -s \"https://sportapi7.p.rapidapi.com/api/v1/team/17/events/all/last/0\" -H \"x-rapidapi-host: sportapi7.p.rapidapi.com\" -H \"x-rapidapi-key: 7913c774b3mshf3efcfbca776bf0p174928jsnad84967269fd\")",
+      "Bash(curl -s \"https://sportapi7.p.rapidapi.com/api/v1/event/14025135/statistics\" -H \"x-rapidapi-host: sportapi7.p.rapidapi.com\" -H \"x-rapidapi-key: 7913c774b3mshf3efcfbca776bf0p174928jsnad84967269fd\")",
+      "Bash(del \"C:\\\\Users\\\\yomih\\\\Desktop\\\\predictorAPI\\\\cache\\\\standings_35_77333.json\")"
+    ]
+  }
+}

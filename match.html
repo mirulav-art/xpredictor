@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Details</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #e8eaed;
+    --border: #d1d5db;
+    --accent: #2563eb;
+    --accent2: #ef4444;
+    --text: #111827;
+    --muted: #6b7280;
+    --white: #111827;
+    --win: #16a34a;
+    --draw: #ca8a04;
+    --loss: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: rgba(240,242,245,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 32px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .back-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-left: 20px;
+  }
+  .logo span { color: var(--white); }
+
+  /* MATCH HERO */
+  .match-hero {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 36px 32px 28px;
+  }
+
+  .tournament-label {
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .tournament-flag {
+    width: 18px;
+    height: 12px;
+    border-radius: 2px;
+    object-fit: cover;
+  }
+
+  .teams-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .team-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .team-block.home { align-items: flex-end; }
+  .team-block.away { align-items: flex-start; }
+
+  .team-logo-lg {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    background: var(--surface2);
+    border-radius: 50%;
+    padding: 6px;
+  }
+
+  .team-name-lg {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .score-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .score-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: 4px;
+  }
+
+  .score-display.ns {
+    font-size: 28px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  .match-datetime {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .match-status-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--muted);
+  }
+
+  /* CONTENT */
+  .content {
+    padding: 28px 32px;
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .form-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .form-title {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .form-title img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: var(--surface2);
+    padding: 2px;
+  }
+
+  .form-title-text {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .form-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* FORM MATCH ROW */
+  .form-row {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: background 0.1s;
+  }
+  .form-row:last-child { border-bottom: none; }
+  .form-row:hover { background: var(--bg); }
+
+  .form-row-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .result-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .result-w { background: rgba(22,163,74,0.15); color: var(--win); }
+  .result-d { background: rgba(202,138,4,0.15); color: var(--draw); }
+  .result-l { background: rgba(239,68,68,0.15); color: var(--loss); }
+
+  .form-teams {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .form-score {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+
+  .form-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    padding-left: 28px;
+  }
+
+  .continuity-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .continuity-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .continuity-bar-wrap {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+  }
+
+  .continuity-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+
+  .continuity-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    line-height: 1;
+    min-width: 44px;
+    text-align: right;
+  }
+
+  /* LOADING */
+  .loading-form {
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-form {
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* LINEUPS */
+  .lineups-section {
+    padding: 28px 32px 0;
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .pitch-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .pitch-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pitch-header img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: var(--surface2);
+    padding: 2px;
+  }
+
+  .pitch-team-name {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .pitch-formation-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: rgba(37,99,235,0.08);
+    border: 1px solid rgba(37,99,235,0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .lineup-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .lineup-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .lineup-confirmed { color: #15803d; }
+  .lineup-confirmed .lineup-dot { background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,0.5); }
+  .lineup-unconfirmed { color: #92400e; }
+  .lineup-unconfirmed .lineup-dot { background: #d97706; }
+
+  .pitch-field {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 0.85;
+    background: #3a9e58;
+    overflow: hidden;
+  }
+
+  .pitch-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .players-layer {
+    position: absolute;
+    inset: 0;
+  }
+
+  .player-node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: default;
+  }
+
+  .player-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1e3a5f;
+    border: 2px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    flex-shrink: 0;
+  }
+
+  .player-circle.away-circle {
+    background: #7f1d1d;
+  }
+
+  .player-name-tag {
+    font-size: 9px;
+    font-weight: 600;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    white-space: nowrap;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  /* TABS */
+  .match-tabs {
+    display: flex; justify-content: center; gap: 8px;
+    padding: 16px 32px 0; max-width: 1200px; margin: 0 auto;
+  }
+  .match-tab {
+    padding: 10px 32px; border: 1px solid var(--border); background: var(--surface);
+    border-radius: 8px 8px 0 0; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; color: var(--muted); transition: all 0.2s;
+  }
+  .match-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .match-tab:hover:not(.active) { background: var(--surface2); }
+
+
+
+  /* SIMULATION VERIFY */
+  .sim-verify-section {
+    padding: 28px 32px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .sim-verify-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .sim-verify-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sim-verify-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .sim-verify-group-title img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: var(--surface2);
+    padding: 2px;
+  }
+
+  .sim-verify-group-title span {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text);
+  }
+
+  .sim-match-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .sim-match-block {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sim-match-block-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sim-match-teams {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sim-match-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .sim-stat-badge {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .sim-stat-ok {
+    background: rgba(22,163,74,0.12);
+    color: var(--win);
+    border: 1px solid rgba(22,163,74,0.25);
+  }
+
+  .sim-stat-missing {
+    background: rgba(239,68,68,0.10);
+    color: var(--loss);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+
+  .sim-stat-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .sim-adj-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .sim-adj-stats span b { color: var(--text); }
+
+  .sim-adjustment {
+    margin-top: 0;
+    padding: 7px 14px;
+    border-radius: 0;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sim-adjustment-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .sim-adj-detail {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    opacity: 0.8;
+  }
+
+  .sim-boost {
+    background: rgba(22,163,74,0.07);
+    border-left: 3px solid var(--win);
+    color: var(--win);
+  }
+
+  .sim-nerf {
+    background: rgba(239,68,68,0.07);
+    border-left: 3px solid var(--loss);
+    color: var(--loss);
+  }
+
+  .sim-neutral {
+    background: var(--surface2);
+    border-left: 3px solid var(--border);
+    color: var(--muted);
+  }
+
+  .sim-xg-summary {
+    margin-top: 24px;
+    padding: 20px 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .sim-xg-summary-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+  }
+
+  .sim-xg-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    flex-wrap: wrap;
+  }
+
+  .sim-xg-row + .sim-xg-row {
+    border-top: 1px solid var(--border);
+  }
+
+  .sim-xg-row img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sim-xg-row b {
+    color: var(--accent);
+  }
+
+  .sim-nerf-text { color: var(--loss); font-weight: 600; }
+  .sim-boost-text { color: var(--win); font-weight: 600; }
+
+  .sim-combined-sim {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .sim-combined-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    opacity: 0.6;
+  }
+
+  .sim-combined-pct {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .sim-combined-detail {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    opacity: 0.7;
+  }
+
+  .sim-combined-high { background: rgba(22,163,74,0.08); border-color: rgba(22,163,74,0.25); }
+  .sim-combined-high .sim-combined-pct { color: var(--win); }
+
+  .sim-combined-mid { background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.25); }
+  .sim-combined-mid .sim-combined-pct { color: var(--accent); }
+
+  .sim-combined-low { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); }
+  .sim-combined-low .sim-combined-pct { color: var(--loss); }
+
+  .sim-combined-na { background: var(--surface2); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; }
+
+  /* ── SIM RESULTS ── */
+  .sim-results-section { margin-top: 28px; }
+  .sim-results-loading { display: flex; align-items: center; gap: 12px; padding: 24px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); }
+  .sim-results-header { text-align: center; padding: 16px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .sim-results-lambda { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .sim-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; }
+  .sim-block-title { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 14px; }
+
+  .sim-1x2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .sim-1x2-item { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 14px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); }
+  .sim-1x2-best { background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.3); }
+  .sim-1x2-label { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text); line-height: 1; }
+  .sim-1x2-pct { font-family: 'DM Mono', monospace; font-size: 17px; font-weight: 700; color: var(--accent); }
+  .sim-1x2-bar-track { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .sim-1x2-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+  .sim-1x2-name { font-family: 'DM Sans', sans-serif; font-size: 10px; color: var(--muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+
+  .sim-1x2-odds { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); font-weight: 500; }
+
+  .sim-ou-cols { display: grid; grid-template-columns: 36px 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .sim-ou-col-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); text-align: center; }
+  .sim-ou-row-new { display: grid; grid-template-columns: 36px 1fr 1fr 1fr; gap: 6px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .sim-ou-row-new:last-child { border-bottom: none; }
+  .sim-ou-line-badge { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--muted); text-align: center; line-height: 1; }
+  .sim-ou-cell-new { display: flex; flex-direction: column; gap: 3px; }
+  .sim-ou-over-block, .sim-ou-under-block { display: flex; align-items: center; justify-content: space-between; }
+  .sim-ou-pct-over { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; color: var(--win); }
+  .sim-ou-pct-under { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: var(--loss); }
+  .sim-ou-odd { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); background: var(--surface2); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); }
+  .sim-ou-bar-wrap { height: 6px; border-radius: 3px; overflow: hidden; margin: 4px 0; }
+  .sim-ou-bar-fill { height: 100%; border-radius: 3px; }
+
+  .sim-btts-odds { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .sim-score-odds { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: right; }
+
+  .sim-block-row { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-bottom: 12px; }
+  .sim-btts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sim-btts-yes, .sim-btts-no { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); }
+  .sim-btts-best.sim-btts-yes { background: rgba(22,163,74,0.08); border-color: rgba(22,163,74,0.3); }
+  .sim-btts-best.sim-btts-no { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); }
+  .sim-btts-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .sim-btts-pct { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 700; color: var(--accent); }
+
+  .sim-scores-list { display: flex; flex-direction: column; gap: 5px; }
+  .sim-score-item { display: grid; grid-template-columns: 44px 1fr 38px 38px; align-items: center; gap: 8px; }
+  .sim-score-val { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); }
+  .sim-score-top .sim-score-val { color: var(--accent); font-weight: 700; }
+  .sim-score-bar-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .sim-score-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; opacity: 0.5; }
+  .sim-score-top .sim-score-bar-fill { opacity: 1; }
+  .sim-score-pct { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* SIMULATION RESULTS */
+  .sim-results-section {
+    padding: 24px 32px 32px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .sim-results-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sim-results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .sim-results-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 200px 1fr;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+
+  .sim-res-team {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sim-res-team.right { text-align: right; }
+
+  .sim-res-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .sim-res-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sim-res-stat-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sim-running {
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="back-btn" onclick="window.close()">← Înapoi</a>
+  <div class="logo">ULTIMATE<span> PREDICTOR</span></div>
+</header>
+
+<div class="match-hero" id="matchHero">
+  <div class="loading-form">
+    <div class="spinner"></div>
+    Se încarcă meciul...
+  </div>
+</div>
+
+<div class="match-tabs">
+  <button class="match-tab active" onclick="switchTab('analysis')">Analiză</button>
+  <button class="match-tab" onclick="switchTab('simulation')">Simulare</button>
+</div>
+
+<div id="tabAnalysis">
+
+<div class="lineups-section" id="lineupsSection" style="display:none">
+  <div class="pitch-wrapper" id="homePitch">
+    <div class="loading-form"><div class="spinner"></div>Se încarcă formația...</div>
+  </div>
+  <div class="pitch-wrapper" id="awayPitch">
+    <div class="loading-form"><div class="spinner"></div>Se încarcă formația...</div>
+  </div>
+</div>
+
+<div class="content" id="content" style="display:none">
+  <div class="form-section" id="homeForm">
+    <div class="form-title">
+      <span class="form-title-text">Acasă</span>
+      <span class="form-subtitle">ultimele 5</span>
+    </div>
+    <div class="loading-form"><div class="spinner"></div>Se încarcă...</div>
+  </div>
+  <div class="form-section" id="awayForm">
+    <div class="form-title">
+      <span class="form-title-text">Deplasare</span>
+      <span class="form-subtitle">ultimele 5</span>
+    </div>
+    <div class="loading-form"><div class="spinner"></div>Se încarcă...</div>
+  </div>
+</div>
+</div><!-- /tabAnalysis -->
+
+<div id="tabSimulation" style="display:none">
+  <div class="sim-verify-section" id="simVerifySection">
+    <div class="loading-form"><div class="spinner"></div>Se verifică statisticile...</div>
+  </div>
+  <div class="sim-results-section" id="simResults" style="display:none">
+    <div class="sim-results-title">Rezultate simulare · 100.000 meciuri · 96 minute/meci</div>
+    <div class="sim-results-grid" id="simResultsGrid"></div>
+  </div>
+</div><!-- /tabSimulation -->
+
+
+<script>
+const API_KEY = '7913c774b3mshf3efcfbca776bf0p174928jsnad84967269fd';
+const API_HOST = 'sportapi7.p.rapidapi.com';
+
+function proxyImg(url) { return `/img-proxy?url=${encodeURIComponent(url)}`; }
+
+// Cache pe disc via server
+async function cacheGet(key) {
+  try {
+    const res = await fetch(`/cache/${key}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function cacheSet(key, value) {
+  try {
+    await fetch(`/cache/${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value)
+    });
+  } catch(e) { console.warn('Cache write error:', e); }
+}
+
+let event = null;
+
+function formatTime(ts) {
+  return new Date(ts * 1000).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateLong(ts) {
+  return new Date(ts * 1000).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function renderHero() {
+  if (!event) {
+    document.getElementById('matchHero').innerHTML = '<div class="empty-form">Meciul nu a fost găsit.</div>';
+    return;
+  }
+
+  const isFinished = event.status?.type === 'finished';
+  const isNS = event.status?.type === 'notstarted';
+  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`);
+  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`);
+  const flagUrl = proxyImg(`https://www.sofascore.com/static/images/flags/${event.tournament?.category?.flag}.png`);
+
+  const statusLabels = { finished: 'Final', notstarted: 'Neprogramat', postponed: 'Amânat', canceled: 'Anulat' };
+
+  let scoreHtml = '';
+  if (isNS) {
+    scoreHtml = `
+      <div class="score-display ns">${formatTime(event.startTimestamp)}</div>
+      <div class="match-datetime">${formatDateLong(event.startTimestamp)}</div>`;
+  } else {
+    scoreHtml = `
+      <div class="score-display">${event.homeScore?.display ?? '?'} : ${event.awayScore?.display ?? '?'}</div>
+      <div class="match-datetime">${formatDateLong(event.startTimestamp)}</div>
+      <div class="match-status-badge">${statusLabels[event.status?.type] || event.status?.type}</div>`;
+  }
+
+  document.getElementById('matchHero').innerHTML = `
+    <div class="tournament-label">
+      <img class="tournament-flag" src="${flagUrl}" onerror="this.style.display='none'" alt="">
+      ${event.tournament?.category?.name} · ${event.tournament?.name}
+    </div>
+    <div class="teams-row">
+      <div class="team-block home">
+        <img class="team-logo-lg" src="${homeLogoUrl}" onerror="this.src=''" alt="">
+        <div class="team-name-lg">${event.homeTeam?.name || '—'}</div>
+      </div>
+      <div class="score-center">${scoreHtml}</div>
+      <div class="team-block away">
+        <img class="team-logo-lg" src="${awayLogoUrl}" onerror="this.src=''" alt="">
+        <div class="team-name-lg">${event.awayTeam?.name || '—'}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('content').style.display = 'grid';
+}
+
+async function fetchLastMatches(teamId) {
+  const cacheKey = `team_last_${teamId}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+
+  const res = await fetch(`https://${API_HOST}/api/v1/team/${teamId}/events/all/last/0`, {
+    headers: {
+      'x-rapidapi-host': API_HOST,
+      'x-rapidapi-key': API_KEY
+    }
+  });
+  const data = await res.json();
+  await cacheSet(cacheKey, data.events || []);
+  return data.events || [];
+}
+
+function getResult(e, teamId, isHome) {
+  const hs = e.homeScore?.display;
+  const as = e.awayScore?.display;
+  if (hs == null || as == null) return 'd';
+  if (hs === as) return 'd';
+  if (isHome) return hs > as ? 'w' : 'l';
+  return as > hs ? 'w' : 'l';
+}
+
+function renderFormSection(containerId, matches, teamId, teamName, teamLogoUrl, isHomeSection) {
+  const container = document.getElementById(containerId);
+  const label = isHomeSection ? 'Acasă' : 'Deplasare';
+
+  if (matches.length === 0) {
+    container.innerHTML = `
+      <div class="form-title">
+        <img src="${teamLogoUrl}" onerror="this.src=''" alt="">
+        <span class="form-title-text">${teamName}</span>
+        <span class="form-subtitle">${label} · ultimele 5</span>
+      </div>
+      <div class="empty-form">Nu există date disponibile.</div>`;
+    return;
+  }
+
+  const rows = matches.map(e => {
+    const isHome = e.homeTeam?.id === teamId;
+    const result = getResult(e, teamId, isHome);
+    const opponent = isHome ? e.awayTeam?.name : e.homeTeam?.name;
+    const hs = e.homeScore?.display ?? '?';
+    const as = e.awayScore?.display ?? '?';
+    const date = new Date(e.startTimestamp * 1000).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' });
+    const venueLabel = isHome ? 'Acasă' : 'Deplasare';
+
+    return `
+      <div class="form-row">
+        <div class="form-row-top">
+          <div class="result-badge result-${result}">${result.toUpperCase()}</div>
+          <span class="form-teams">${e.homeTeam?.name} vs ${e.awayTeam?.name}</span>
+          <span class="form-score">${hs} - ${as}</span>
+        </div>
+        <div class="form-meta">${date} · ${venueLabel}</div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="form-title">
+      <img src="${teamLogoUrl}" onerror="this.src=''" alt="">
+      <span class="form-title-text">${teamName}</span>
+      <span class="form-subtitle">${label} · ultimele 5</span>
+    </div>
+    ${rows}`;
+}
+
+async function loadForm() {
+  if (!event) return;
+
+  const tournamentId = event.tournament?.uniqueTournament?.id;
+  const homeTeamId = event.homeTeam?.id;
+  const awayTeamId = event.awayTeam?.id;
+  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${homeTeamId}/image`);
+  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${awayTeamId}/image`);
+
+  const [homeEvents, awayEvents] = await Promise.all([
+    fetchLastMatches(homeTeamId),
+    fetchLastMatches(awayTeamId)
+  ]);
+
+  // Filtrare: strict acasa, strict campionatul curent, terminate
+  const currentTs = event.startTimestamp;
+
+  const homeFiltered = homeEvents
+    .filter(e =>
+      e.homeTeam?.id === homeTeamId &&
+      e.tournament?.uniqueTournament?.id === tournamentId &&
+      e.status?.type === 'finished' &&
+      e.startTimestamp < currentTs
+    )
+    .sort((a, b) => b.startTimestamp - a.startTimestamp)
+    .slice(0, 5);
+
+  const awayFiltered = awayEvents
+    .filter(e =>
+      e.awayTeam?.id === awayTeamId &&
+      e.tournament?.uniqueTournament?.id === tournamentId &&
+      e.status?.type === 'finished' &&
+      e.startTimestamp < currentTs
+    )
+    .sort((a, b) => b.startTimestamp - a.startTimestamp)
+    .slice(0, 5);
+
+  renderFormSection('homeForm', homeFiltered, homeTeamId, event.homeTeam?.name, homeLogoUrl, true);
+  renderFormSection('awayForm', awayFiltered, awayTeamId, event.awayTeam?.name, awayLogoUrl, false);
+}
+
+// ── helpers ──────────────────────────────────────────
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+async function fetchSequential(ids, fetchFn, ms = 250) {
+  const results = [];
+  for (const id of ids) {
+    results.push(await fetchFn(id));
+    await delay(ms);
+  }
+  return results;
+}
+
+
+async function fetchEventLineup(eventId) {
+  const cacheKey = `lineups_${eventId}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`https://${API_HOST}/api/v1/event/${eventId}/lineups`, {
+      headers: { 'x-rapidapi-host': API_HOST, 'x-rapidapi-key': API_KEY }
+    });
+    const data = await res.json();
+    if ((data.home || data.away) && data.confirmed) await cacheSet(cacheKey, data);
+    return (data.home || data.away) ? data : null;
+  } catch { return null; }
+}
+
+function calcContinuity(currentStarters, pastLineups, getTeamLineup) {
+  if (!currentStarters || currentStarters.length === 0) return null;
+  const currentIds = currentStarters.map(p => p.player?.id).filter(Boolean);
+  if (currentIds.length === 0) return null;
+
+  // Filtrăm doar lineupurile care au efectiv jucători titulari
+  const validLineups = pastLineups.filter(l => {
+    const tl = getTeamLineup(l);
+    return tl?.players?.some(p => !p.substitute);
+  });
+  if (validLineups.length === 0) return null;
+
+  let totalScore = 0;
+  currentIds.forEach(playerId => {
+    let appearances = 0;
+    validLineups.forEach(lineup => {
+      const starters = getTeamLineup(lineup).players.filter(p => !p.substitute);
+      if (starters.some(p => p.player?.id === playerId)) appearances++;
+    });
+    totalScore += appearances / validLineups.length;
+  });
+
+  return (totalScore / currentIds.length) * 100;
+}
+
+// ── Pitch ───────────────────────────────────────────
+function calcPlayerPositions(formation) {
+  const lines = [1, ...formation.split('-').map(Number)];
+  const nLines = lines.length;
+  const positions = [];
+  const yTop = 14, yBottom = 88;
+
+  lines.forEach((count, lineIdx) => {
+    const y = yBottom - (lineIdx / (nLines - 1)) * (yBottom - yTop);
+    for (let i = 0; i < count; i++) {
+      let x;
+      if (count === 1) {
+        x = 50;
+      } else {
+        // Spatiere fixa de 18 unitati intre jucatori, centrata pe 50
+        const spacing = 18;
+        const totalWidth = (count - 1) * spacing;
+        x = 50 - totalWidth / 2 + i * spacing;
+      }
+      positions.push({ x, y });
+    }
+  });
+  return positions;
+}
+
+function renderPitch(containerId, teamData, teamName, logoUrl, isHome, confirmed) {
+  const container = document.getElementById(containerId);
+
+  if (!teamData || !teamData.formation) {
+    container.innerHTML = `
+      <div class="pitch-header">
+        <img src="${logoUrl}" onerror="this.src=''" alt="">
+        <span class="pitch-team-name">${teamName}</span>
+      </div>
+      <div class="empty-form">Formație indisponibilă.</div>`;
+    return;
+  }
+
+  const formation = teamData.formation;
+  const starters = teamData.players.filter(p => !p.substitute);
+  const positions = calcPlayerPositions(formation);
+  const circleClass = isHome ? 'player-circle' : 'player-circle away-circle';
+
+  const playerNodes = starters.slice(0, positions.length).map((p, i) => {
+    const pos = positions[i];
+    const shortName = p.player?.shortName || p.player?.name || '?';
+    const lastName = shortName.split(' ').pop();
+    const jersey = p.jerseyNumber || p.shirtNumber || '?';
+    return `
+      <div class="player-node" style="left:${pos.x}%;top:${pos.y}%">
+        <div class="${circleClass}">${jersey}</div>
+        <div class="player-name-tag">${lastName}</div>
+      </div>`;
+  }).join('');
+
+  const statusHtml = confirmed
+    ? `<span class="lineup-status lineup-confirmed"><span class="lineup-dot"></span>Lineup confirmat</span>`
+    : `<span class="lineup-status lineup-unconfirmed"><span class="lineup-dot"></span>Lineup neconfirmat</span>`;
+
+  container.innerHTML = `
+    <div class="pitch-header">
+      <img src="${logoUrl}" onerror="this.src=''" alt="">
+      <span class="pitch-team-name">${teamName}</span>
+      <span class="pitch-formation-badge">${formation}</span>
+      ${statusHtml}
+    </div>
+    <div class="pitch-field">
+      <svg class="pitch-svg" viewBox="0 0 100 147" preserveAspectRatio="none">
+        <!-- Stripes -->
+        <rect x="0" y="0" width="100" height="147" fill="#3a9e58"/>
+        <rect x="0" y="0" width="100" height="14.7" fill="#379655"/>
+        <rect x="0" y="29.4" width="100" height="14.7" fill="#379655"/>
+        <rect x="0" y="58.8" width="100" height="14.7" fill="#379655"/>
+        <rect x="0" y="88.2" width="100" height="14.7" fill="#379655"/>
+        <rect x="0" y="117.6" width="100" height="14.7" fill="#379655"/>
+        <!-- Border -->
+        <rect x="3" y="3" width="94" height="141" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <!-- Center line -->
+        <line x1="3" y1="73.5" x2="97" y2="73.5" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <!-- Center circle -->
+        <circle cx="50" cy="73.5" r="12" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <circle cx="50" cy="73.5" r="0.8" fill="rgba(255,255,255,0.7)"/>
+        <!-- Top penalty area -->
+        <rect x="22" y="3" width="56" height="20" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <!-- Top goal area -->
+        <rect x="36" y="3" width="28" height="8" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <!-- Top penalty spot -->
+        <circle cx="50" cy="16" r="0.8" fill="rgba(255,255,255,0.7)"/>
+        <!-- Bottom penalty area -->
+        <rect x="22" y="124" width="56" height="20" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <!-- Bottom goal area -->
+        <rect x="36" y="136" width="28" height="8" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.6"/>
+        <!-- Bottom penalty spot -->
+        <circle cx="50" cy="131" r="0.8" fill="rgba(255,255,255,0.7)"/>
+      </svg>
+      <div class="players-layer">${playerNodes}</div>
+    </div>`;
+}
+
+async function loadLineups() {
+  if (!event) return;
+
+  const cacheKey = `lineups_${event.id}`;
+  let data = await cacheGet(cacheKey);
+
+  if (!data) {
+    try {
+      const res = await fetch(`https://${API_HOST}/api/v1/event/${event.id}/lineups`, {
+        headers: { 'x-rapidapi-host': API_HOST, 'x-rapidapi-key': API_KEY }
+      });
+      data = await res.json();
+      if ((data.home || data.away) && data.confirmed) await cacheSet(cacheKey, data);
+      else if (!data.home && !data.away) data = null;
+    } catch(e) {
+      document.getElementById('homePitch').innerHTML = '<div class="empty-form">Eroare la încărcarea formațiilor.</div>';
+      document.getElementById('awayPitch').innerHTML = '';
+      return;
+    }
+  }
+
+  currentLineupData = data;
+
+  document.getElementById('lineupsSection').style.display = 'grid';
+  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`);
+  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`);
+  const confirmed = data.confirmed === true;
+  renderPitch('homePitch', data.home, event.homeTeam?.name, homeLogoUrl, true, confirmed);
+  renderPitch('awayPitch', data.away, event.awayTeam?.name, awayLogoUrl, false, confirmed);
+}
+
+
+
+async function fetchStandings(tournamentId, seasonId) {
+  const cacheKey = `standings_${tournamentId}_${seasonId}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) {
+    if (Array.isArray(cached)) return cached;
+    const fromObj = cached.standings?.[0]?.rows;
+    if (Array.isArray(fromObj)) return fromObj;
+  }
+  try {
+    const res = await fetch(`https://${API_HOST}/api/v1/unique-tournament/${tournamentId}/season/${seasonId}/standings/total`, {
+      headers: { 'x-rapidapi-host': API_HOST, 'x-rapidapi-key': API_KEY }
+    });
+    const data = await res.json();
+    const rows = data.standings?.[0]?.rows || [];
+    if (rows.length) await cacheSet(cacheKey, rows);
+    return rows;
+  } catch { return []; }
+}
+
+function buildPPGMap(rows) {
+  const map = {};
+  for (const row of rows) {
+    if (row.matches > 0) map[row.team.id] = row.points / row.matches;
+  }
+  return map;
+}
+
+function calcAdjustment(ppgActualOpp, ppgPastOpp, maxDiff) {
+  if (ppgActualOpp == null || ppgPastOpp == null || maxDiff === 0) return 0;
+  const diff = ppgPastOpp - ppgActualOpp;
+  const clamped = Math.max(-1, Math.min(1, diff / maxDiff));
+  return +(clamped * 20).toFixed(1);
+}
+
+async function fetchEventStatistics(eventId) {
+  const cacheKey = `stats_${eventId}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`https://${API_HOST}/api/v1/event/${eventId}/statistics`, {
+      headers: { 'x-rapidapi-host': API_HOST, 'x-rapidapi-key': API_KEY }
+    });
+    const data = await res.json();
+    const stats = (data.statistics && data.statistics.length > 0) ? data.statistics : null;
+    if (stats) await cacheSet(cacheKey, stats);
+    return stats;
+  } catch { return null; }
+}
+
+async function fetchLineup(eventId) {
+  const cacheKey = `lineups_${eventId}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`https://${API_HOST}/api/v1/event/${eventId}/lineups`, {
+      headers: { 'x-rapidapi-host': API_HOST, 'x-rapidapi-key': API_KEY }
+    });
+    const data = await res.json();
+    // Cache doar dacă lineup-ul este confirmat (meciuri terminate)
+    if ((data.home || data.away) && data.confirmed) await cacheSet(cacheKey, data);
+    return (data.home || data.away) ? data : null;
+  } catch { return null; }
+}
+
+function runMonteCarlo(lambdaHome, lambdaAway, homePosPct, awayPosPct) {
+  return new Promise(resolve => setTimeout(() => {
+    const N = 100000;
+    const scores = {};
+    let homeWins = 0, draws = 0, awayWins = 0, btts = 0;
+    const totalDist = new Array(16).fill(0);
+    const hDist = new Array(12).fill(0);
+    const aDist = new Array(12).fill(0);
+    const homePosBase = homePosPct / (homePosPct + awayPosPct);
+
+    for (let s = 0; s < N; s++) {
+      const dur = 91 + Math.floor(Math.random() * 8); // 91-98
+      let hg = 0, ag = 0;
+      let hStreak = 0, aStreak = 0;
+      let posProb = homePosBase;
+
+      for (let m = 0; m < dur; m++) {
+        if (m % 3 === 0) {
+          const v = (Math.random() - 0.5) * 0.1;
+          posProb = Math.max(0.1, Math.min(0.9, homePosBase + v));
+        }
+        if (Math.random() < posProb) { hStreak++; aStreak = 0; }
+        else { aStreak++; hStreak = 0; }
+
+        const lh = (lambdaHome / dur) * (hStreak > 3 ? 1.15 : 1);
+        const la = (lambdaAway / dur) * (aStreak > 3 ? 1.15 : 1);
+        if (Math.random() < 1 - Math.exp(-lh)) hg++;
+        if (Math.random() < 1 - Math.exp(-la)) ag++;
+      }
+
+      const key = `${hg}-${ag}`;
+      scores[key] = (scores[key] || 0) + 1;
+      if (hg > ag) homeWins++; else if (hg === ag) draws++; else awayWins++;
+      if (hg > 0 && ag > 0) btts++;
+      const tg = hg + ag;
+      if (tg < totalDist.length) totalDist[tg]++;
+      if (hg < hDist.length) hDist[hg]++;
+      if (ag < aDist.length) aDist[ag]++;
+    }
+
+    resolve({
+      N,
+      homeWinPct: homeWins / N * 100,
+      drawPct: draws / N * 100,
+      awayWinPct: awayWins / N * 100,
+      bttsPct: btts / N * 100,
+      scores,
+      totalDist: totalDist.map(c => c / N * 100),
+      hDist: hDist.map(c => c / N * 100),
+      aDist: aDist.map(c => c / N * 100)
+    });
+  }, 0));
+}
+
+function renderSimResults(r, homeName, awayName, homeLogoUrl, awayLogoUrl, lh, la) {
+  function toOdds(pct) {
+    if (!pct || pct < 0.5) return '—';
+    return (100 / pct).toFixed(2);
+  }
+  function ou(dist, line) {
+    const under = dist.slice(0, Math.floor(line) + 1).reduce((a, b) => a + b, 0);
+    const overPct = 100 - under;
+    return { over: overPct.toFixed(1), under: under.toFixed(1), overOdds: toOdds(overPct), underOdds: toOdds(under) };
+  }
+  const lines = [0.5, 1.5, 2.5, 3.5, 4.5];
+  const max1x2 = Math.max(r.homeWinPct, r.drawPct, r.awayWinPct);
+  const topScores = Object.entries(r.scores)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([score, count]) => ({ score, pct: count / r.N * 100 }));
+
+  function ouCell(d) {
+    return `<div class="sim-ou-cell-new">
+      <div class="sim-ou-over-block">
+        <span class="sim-ou-pct-over">${d.over}%</span>
+        <span class="sim-ou-odd">${d.overOdds}</span>
+      </div>
+      <div class="sim-ou-bar-wrap">
+        <div class="sim-ou-bar-fill" style="background:linear-gradient(90deg,var(--win) ${d.over}%,var(--loss) ${d.over}%);width:100%"></div>
+      </div>
+      <div class="sim-ou-under-block">
+        <span class="sim-ou-pct-under">${d.under}%</span>
+        <span class="sim-ou-odd">${d.underOdds}</span>
+      </div>
+    </div>`;
+  }
+
+  return `
+    <div class="sim-results-header">
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px">
+        <img src="${homeLogoUrl}" onerror="this.src=''" style="width:32px;height:32px" alt="">
+        <span style="font-family:'DM Sans',sans-serif;font-weight:600;font-size:15px">${homeName}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">vs</span>
+        <span style="font-family:'DM Sans',sans-serif;font-weight:600;font-size:15px">${awayName}</span>
+        <img src="${awayLogoUrl}" onerror="this.src=''" style="width:32px;height:32px" alt="">
+      </div>
+      <div class="sim-results-lambda">λ home: ${lh.toFixed(3)} · λ away: ${la.toFixed(3)} · 100.000 simulări</div>
+    </div>
+
+    <div class="sim-block">
+      <div class="sim-block-title">1 · X · 2</div>
+      <div class="sim-1x2">
+        ${[{l:'1',n:homeName,p:r.homeWinPct},{l:'X',n:'Egal',p:r.drawPct},{l:'2',n:awayName,p:r.awayWinPct}].map(x=>`
+          <div class="sim-1x2-item ${x.p===max1x2?'sim-1x2-best':''}">
+            <div class="sim-1x2-label">${x.l}</div>
+            <div class="sim-1x2-pct">${x.p.toFixed(1)}%</div>
+            <div class="sim-1x2-odds">${toOdds(x.p)}</div>
+            <div class="sim-1x2-bar-track"><div class="sim-1x2-bar-fill" style="width:${x.p.toFixed(1)}%"></div></div>
+            <div class="sim-1x2-name">${x.n}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="sim-block">
+      <div class="sim-block-title">Over / Under</div>
+      <div class="sim-ou-cols">
+        <div></div>
+        <div class="sim-ou-col-label">Home goluri</div>
+        <div class="sim-ou-col-label">Total goluri</div>
+        <div class="sim-ou-col-label">Away goluri</div>
+      </div>
+      ${lines.map(line => {
+        const h=ou(r.hDist,line), t=ou(r.totalDist,line), a=ou(r.aDist,line);
+        return `<div class="sim-ou-row-new">
+          <div class="sim-ou-line-badge">${line}</div>
+          ${ouCell(h)}${ouCell(t)}${ouCell(a)}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="sim-block-row">
+      <div class="sim-block">
+        <div class="sim-block-title">BTTS</div>
+        <div class="sim-btts">
+          <div class="sim-btts-yes ${r.bttsPct>=50?'sim-btts-best':''}">
+            <div class="sim-btts-label">Da</div>
+            <div class="sim-btts-pct">${r.bttsPct.toFixed(1)}%</div>
+            <div class="sim-btts-odds">${toOdds(r.bttsPct)}</div>
+          </div>
+          <div class="sim-btts-no ${r.bttsPct<50?'sim-btts-best':''}">
+            <div class="sim-btts-label">Nu</div>
+            <div class="sim-btts-pct">${(100-r.bttsPct).toFixed(1)}%</div>
+            <div class="sim-btts-odds">${toOdds(100-r.bttsPct)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="sim-block">
+        <div class="sim-block-title">Scoruri Probabile</div>
+        <div class="sim-scores-list">
+          ${topScores.map((s,i)=>`
+            <div class="sim-score-item ${i===0?'sim-score-top':''}">
+              <span class="sim-score-val">${s.score}</span>
+              <div class="sim-score-bar-track"><div class="sim-score-bar-fill" style="width:${(s.pct/topScores[0].pct*100).toFixed(0)}%"></div></div>
+              <span class="sim-score-pct">${s.pct.toFixed(1)}%</span>
+              <span class="sim-score-odds">${toOdds(s.pct)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+let simLoaded = false;
+let currentLineupData = null;
+
+async function loadSimulation() {
+  if (simLoaded || !event) return;
+  simLoaded = true;
+
+  const tournamentId = event.tournament?.uniqueTournament?.id;
+  const seasonId = event.season?.id;
+  const homeTeamId = event.homeTeam?.id;
+  const awayTeamId = event.awayTeam?.id;
+  const currentTs = event.startTimestamp;
+  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${homeTeamId}/image`);
+  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${awayTeamId}/image`);
+
+  document.getElementById('simVerifySection').innerHTML =
+    `<div id="simResultsSection" class="sim-results-section"><div class="sim-results-loading"><div class="spinner"></div><span>Se încarcă datele...</span></div></div>`;
+
+  const [homeEvents, awayEvents, standingsRows] = await Promise.all([
+    fetchLastMatches(homeTeamId),
+    fetchLastMatches(awayTeamId),
+    fetchStandings(tournamentId, seasonId)
+  ]);
+
+  function extractPlayerIds(lineupSide) {
+    if (!lineupSide?.players) return new Set();
+    return new Set(lineupSide.players.map(p => p.player?.id).filter(Boolean));
+  }
+
+  const currentHomeIds = extractPlayerIds(currentLineupData?.home);
+  const currentAwayIds = extractPlayerIds(currentLineupData?.away);
+
+  // Ultimele 5 meciuri din campionat indiferent de teren (acasă sau deplasare)
+  const homeFiltered = homeEvents
+    .filter(e =>
+      (e.homeTeam?.id === homeTeamId || e.awayTeam?.id === homeTeamId) &&
+      e.tournament?.uniqueTournament?.id === tournamentId &&
+      e.status?.type === 'finished' &&
+      e.startTimestamp < currentTs
+    )
+    .sort((a, b) => b.startTimestamp - a.startTimestamp)
+    .slice(0, 5);
+
+  const awayFiltered = awayEvents
+    .filter(e =>
+      (e.homeTeam?.id === awayTeamId || e.awayTeam?.id === awayTeamId) &&
+      e.tournament?.uniqueTournament?.id === tournamentId &&
+      e.status?.type === 'finished' &&
+      e.startTimestamp < currentTs
+    )
+    .sort((a, b) => b.startTimestamp - a.startTimestamp)
+    .slice(0, 5);
+
+  // PPG map + maxDiff universal per campionat
+  const ppgMap = buildPPGMap(standingsRows);
+  const ppgValues = Object.values(ppgMap);
+  const maxDiff = ppgValues.length ? Math.max(...ppgValues) - Math.min(...ppgValues) : 0;
+  const ppgActualOppHome = ppgMap[event.awayTeam?.id];
+  const ppgActualOppAway = ppgMap[event.homeTeam?.id];
+
+  // Fetch statistici pentru toate cele 10 meciuri secvențial
+  // side și pastOpp se determină dinamic (poate fi acasă sau deplasare)
+  function calcLineupSim(currentIds, pastLineup, side) {
+    if (currentIds.size === 0) return null;
+    const pastIds = extractPlayerIds(side === 'home' ? pastLineup?.home : pastLineup?.away);
+    if (pastIds.size === 0) return null;
+    let common = 0;
+    for (const id of currentIds) { if (pastIds.has(id)) common++; }
+    return { pct: Math.round((common / currentIds.size) * 100), common, total: currentIds.size, pastIds };
+  }
+
+  const homeData = [];
+  for (const e of homeFiltered) {
+    const isHome = e.homeTeam?.id === homeTeamId;
+    const side = isHome ? 'home' : 'away';
+    const statsCached  = await cacheGet(`stats_${e.id}`);
+    const lineupCached = await cacheGet(`lineups_${e.id}`);
+    const [stats, pastLineup] = await Promise.all([
+      statsCached  ? Promise.resolve(statsCached)  : fetchEventStatistics(e.id),
+      lineupCached ? Promise.resolve(lineupCached) : fetchLineup(e.id)
+    ]);
+    const pastOpp = isHome ? e.awayTeam : e.homeTeam;
+    const ppgPast = pastOpp ? ppgMap[pastOpp.id] : null;
+    const factor = calcAdjustment(ppgActualOppHome, ppgPast, maxDiff);
+    const lineupSim = calcLineupSim(currentHomeIds, pastLineup, side);
+    homeData.push({ event: e, stats, pastOpp, ppgPast, factor, side, lineupSim });
+    if (!statsCached || !lineupCached) await delay(300);
+  }
+
+  const awayData = [];
+  for (const e of awayFiltered) {
+    const isAway = e.awayTeam?.id === awayTeamId;
+    const side = isAway ? 'away' : 'home';
+    const statsCached  = await cacheGet(`stats_${e.id}`);
+    const lineupCached = await cacheGet(`lineups_${e.id}`);
+    const [stats, pastLineup] = await Promise.all([
+      statsCached  ? Promise.resolve(statsCached)  : fetchEventStatistics(e.id),
+      lineupCached ? Promise.resolve(lineupCached) : fetchLineup(e.id)
+    ]);
+    const pastOpp = isAway ? e.homeTeam : e.awayTeam;
+    const ppgPast = pastOpp ? ppgMap[pastOpp.id] : null;
+    const factor = calcAdjustment(ppgActualOppAway, ppgPast, maxDiff);
+    const lineupSim = calcLineupSim(currentAwayIds, pastLineup, side);
+    awayData.push({ event: e, stats, pastOpp, ppgPast, factor, side, lineupSim });
+    if (!statsCached || !lineupCached) await delay(300);
+  }
+
+  // ── Ponderi per meci: lineupSim × PPG proximity, normalizat ──
+  function calcMatchWeights(dataArr, ppgActualOpp) {
+    const raw = dataArr.map(d => {
+      const lf = d.lineupSim != null ? d.lineupSim.pct / 100 : 0.5;
+      let pf = 0.5;
+      if (d.ppgPast != null && ppgActualOpp != null && maxDiff > 0) {
+        pf = Math.max(0, 1 - Math.abs(d.ppgPast - ppgActualOpp) / maxDiff);
+      }
+      return lf * pf;
+    });
+    const sum = raw.reduce((a, b) => a + b, 0);
+    const norm = sum > 0 ? raw.map(w => w / sum) : raw.map(() => 1 / dataArr.length);
+    dataArr.forEach((d, i) => { d.weight = norm[i]; });
+  }
+
+  calcMatchWeights(homeData, ppgActualOppHome);
+  calcMatchWeights(awayData, ppgActualOppAway);
+
+  // Helper: badge boost/nerf
+  function adjBadgeHtml(factor, pastOppName, actualOppName, ppgPast, ppgActual) {
+    const sign = factor > 0 ? '+' : '';
+    const cls = factor > 0 ? 'sim-boost' : factor < 0 ? 'sim-nerf' : 'sim-neutral';
+    const label = factor > 0 ? 'BOOST' : factor < 0 ? 'NERF' : 'NEUTRU';
+    return `
+      <div class="sim-adjustment ${cls}">
+        <div class="sim-adjustment-top">${label} ${sign}${factor}%</div>
+        <div class="sim-adj-detail">Adv. trecut: ${pastOppName || '—'} (${ppgPast != null ? ppgPast.toFixed(2) : '—'} PPG)</div>
+        <div class="sim-adj-detail">Adv. actual: ${actualOppName || '—'} (${ppgActual != null ? ppgActual.toFixed(2) : '—'} PPG)</div>
+      </div>`;
+  }
+
+  // Helper: bloc meci
+  function matchBlockHtml(d, actualOppName, ppgActualOpp) {
+    const e = d.event;
+    const hasStats = d.stats !== null;
+    const date = new Date(e.startTimestamp * 1000).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' });
+    const score = `${e.homeScore?.display ?? '?'} - ${e.awayScore?.display ?? '?'}`;
+    const badgeClass = hasStats ? 'sim-stat-ok' : 'sim-stat-missing';
+    const badgeText = hasStats ? 'Statistici găsite' : 'Lipsă statistici';
+    return `
+      <div class="sim-match-entry">
+        <div class="sim-match-block">
+          <div class="sim-match-block-left">
+            <div class="sim-match-teams">${e.homeTeam?.name} vs ${e.awayTeam?.name}</div>
+            <div class="sim-match-meta">${date} · ${score}</div>
+          </div>
+          <div class="sim-stat-badge ${badgeClass}"><div class="sim-stat-dot"></div>${badgeText}</div>
+        </div>
+        ${adjBadgeHtml(d.factor, d.pastOpp?.name, actualOppName, d.ppgPast, ppgActualOpp)}
+      </div>`;
+  }
+
+  document.getElementById('simVerifySection').insertAdjacentHTML('beforeend', `
+    <div class="sim-verify-grid">
+      <div class="sim-verify-group">
+        <div class="sim-verify-group-title">
+          <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
+          <span>${event.homeTeam?.name} · Acasă</span>
+        </div>
+        ${homeData.map(d => matchBlockHtml(d, event.awayTeam?.name, ppgActualOppHome)).join('')}
+      </div>
+      <div class="sim-verify-group">
+        <div class="sim-verify-group-title">
+          <img src="${awayLogoUrl}" onerror="this.src=''" alt="">
+          <span>${event.awayTeam?.name} · Deplasare</span>
+        </div>
+        ${awayData.map(d => matchBlockHtml(d, event.homeTeam?.name, ppgActualOppAway)).join('')}
+      </div>
+    </div>`);
+
+  // ── Extrage cele 5 statistici ajustate cu boost/nerf ──
+  function extractAdjusted(d) {
+    const s = d.stats;
+    const side = d.side;
+    const oppSide = side === 'home' ? 'away' : 'home';
+    const m = 1 + d.factor / 100;
+
+    const possession = (getVal(s, 'ballPossession', side) ?? 50) * m;
+    const xG         = (getVal(s, 'expectedGoals', side) ?? 0) * m;
+    const xGA        = (getVal(s, 'expectedGoals', oppSide) ?? 0) / m;
+
+    const ev = d.event;
+    const rawScored   = side === 'home' ? (ev.homeScore?.display ?? 0) : (ev.awayScore?.display ?? 0);
+    const rawConceded = side === 'home' ? (ev.awayScore?.display ?? 0) : (ev.homeScore?.display ?? 0);
+    const goalsScored   = rawScored * m;
+    const goalsConceded = rawConceded / m;
+
+    return { possession, xG, xGA, goalsScored, goalsConceded };
+  }
+
+  // Afișare verificare statistici ajustate + similaritate lineup + pondere
+  function adjStatsHtml(d) {
+    const a = extractAdjusted(d);
+    const sim = d.lineupSim;
+    const simColor = sim == null ? '' : sim.pct >= 70 ? 'color:var(--win)' : sim.pct >= 40 ? 'color:var(--accent)' : 'color:var(--loss)';
+    const simHtml = sim != null
+      ? `<span style="${simColor}">Lineup: <b>${sim.pct}%</b> <span style="opacity:0.6">(${sim.common}/${sim.total})</span></span>`
+      : `<span style="opacity:0.4">Lineup: —</span>`;
+    const weightHtml = d.weight != null
+      ? `<span style="opacity:0.65">Pondere: <b>${Math.round(d.weight * 100)}%</b></span>`
+      : '';
+    return `<div class="sim-adj-stats">
+      <span>Pos: <b>${a.possession.toFixed(1)}%</b></span>
+      <span>xG: <b>${a.xG.toFixed(2)}</b></span>
+      <span>xGA: <b>${a.xGA.toFixed(2)}</b></span>
+      <span>GF: <b>${a.goalsScored.toFixed(2)}</b></span>
+      <span>GA: <b>${a.goalsConceded.toFixed(2)}</b></span>
+      ${simHtml}
+      ${weightHtml}
+    </div>`;
+  }
+
+  // Adaugă statisticile ajustate în interiorul fiecărui sim-match-entry
+  document.querySelectorAll('.sim-match-entry').forEach((entry, i) => {
+    const isHome = i < homeData.length;
+    const d = isHome ? homeData[i] : awayData[i - homeData.length];
+    if (d.stats) {
+      entry.insertAdjacentHTML('beforeend', adjStatsHtml(d));
+    } else if (d.lineupSim != null) {
+      const sim = d.lineupSim;
+      const simColor = sim.pct >= 70 ? 'color:var(--win)' : sim.pct >= 40 ? 'color:var(--accent)' : 'color:var(--loss)';
+      entry.insertAdjacentHTML('beforeend',
+        `<div class="sim-adj-stats"><span style="${simColor}">Lineup: <b>${sim.pct}%</b> <span style="opacity:0.6">(${sim.common}/${sim.total})</span></span></div>`);
+    }
+  });
+
+  // ── Similaritate combinată (câți din lineup-ul curent au jucat în cel puțin 1 din 5 meciuri) ──
+  function calcCombinedSim(currentIds, dataArr) {
+    if (currentIds.size === 0) return null;
+    const appearances = new Map();
+    for (const d of dataArr) {
+      if (d.lineupSim?.pastIds) {
+        d.lineupSim.pastIds.forEach(id => {
+          appearances.set(id, (appearances.get(id) || 0) + 1);
+        });
+      }
+    }
+    const seen = [...currentIds].filter(id => (appearances.get(id) || 0) >= 3).length;
+    return { pct: Math.round((seen / currentIds.size) * 100), seen, total: currentIds.size };
+  }
+
+  const homeCombined = calcCombinedSim(currentHomeIds, homeData);
+  const awayCombined = calcCombinedSim(currentAwayIds, awayData);
+
+  function combinedSimHtml(combined, hasLineup) {
+    if (!hasLineup) return `<div class="sim-combined-sim sim-combined-na">Lineup curent indisponibil</div>`;
+    if (!combined) return `<div class="sim-combined-sim sim-combined-na">Date insuficiente</div>`;
+    const cls = combined.pct >= 70 ? 'sim-combined-high' : combined.pct >= 40 ? 'sim-combined-mid' : 'sim-combined-low';
+    return `<div class="sim-combined-sim ${cls}">
+      <span class="sim-combined-label">Continuitate lineup</span>
+      <span class="sim-combined-pct">${combined.pct}%</span>
+      <span class="sim-combined-detail">${combined.seen} din ${combined.total} jucători au jucat în cel puțin 3 din ultimele 5 meciuri</span>
+    </div>`;
+  }
+
+  const groups = document.querySelectorAll('.sim-verify-group');
+  if (groups[0]) groups[0].insertAdjacentHTML('beforeend', combinedSimHtml(homeCombined, currentHomeIds.size > 0));
+  if (groups[1]) groups[1].insertAdjacentHTML('beforeend', combinedSimHtml(awayCombined, currentAwayIds.size > 0));
+
+  // ── Ajustare xG pe baza diferenței față de media ponderată a golurilor ──
+  function wAvg(dataArr, key) {
+    const withStats = dataArr.filter(d => d.stats);
+    if (!withStats.length) return 0;
+    const totalW = withStats.reduce((s, d) => s + (d.weight ?? 0), 0);
+    if (totalW === 0) {
+      const vals = withStats.map(d => extractAdjusted(d)[key]);
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
+    return withStats.reduce((s, d) => s + extractAdjusted(d)[key] * (d.weight ?? 0), 0) / totalW;
+  }
+
+  const homeAvgPos = wAvg(homeData, 'possession');
+  const awayAvgPos = wAvg(awayData, 'possession');
+
+  // xG ofensiv
+  const homeAvgXG    = wAvg(homeData, 'xG');
+  const homeAvgGoals = wAvg(homeData, 'goalsScored');
+  const homeXGFinal  = homeAvgXG - 0.38 * (homeAvgGoals - homeAvgXG);
+
+  const awayAvgXG    = wAvg(awayData, 'xG');
+  const awayAvgGoals = wAvg(awayData, 'goalsScored');
+  const awayXGFinal  = awayAvgXG - 0.38 * (awayAvgGoals - awayAvgXG);
+
+  // xGA defensiv
+  const homeAvgXGA      = wAvg(homeData, 'xGA');
+  const homeAvgConceded = wAvg(homeData, 'goalsConceded');
+  const homeXGAFinal    = homeAvgXGA - 0.38 * (homeAvgConceded - homeAvgXGA);
+
+  const awayAvgXGA      = wAvg(awayData, 'xGA');
+  const awayAvgConceded = wAvg(awayData, 'goalsConceded');
+  const awayXGAFinal    = awayAvgXGA - 0.38 * (awayAvgConceded - awayAvgXGA);
+
+  document.getElementById('simVerifySection').insertAdjacentHTML('beforeend', `
+    <div class="sim-xg-summary">
+      <div class="sim-xg-summary-title">Ajustare xG ofensiv (corecție noroc/ghinion 38%)</div>
+      <div class="sim-xg-row">
+        <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
+        <span>${event.homeTeam?.name}</span>
+        <span>xG mediu: <b>${homeAvgXG.toFixed(2)}</b></span>
+        <span>Goluri medii: <b>${homeAvgGoals.toFixed(2)}</b></span>
+        <span class="${homeAvgGoals > homeAvgXG ? 'sim-nerf-text' : homeAvgGoals < homeAvgXG ? 'sim-boost-text' : ''}">
+          ${homeAvgGoals > homeAvgXG ? '🍀 Noroc' : homeAvgGoals < homeAvgXG ? '😤 Ghinion' : '⚖️ Neutru'}
+        </span>
+        <span>→ xG final: <b>${homeXGFinal.toFixed(2)}</b></span>
+      </div>
+      <div class="sim-xg-row">
+        <img src="${awayLogoUrl}" onerror="this.src=''" alt="">
+        <span>${event.awayTeam?.name}</span>
+        <span>xG mediu: <b>${awayAvgXG.toFixed(2)}</b></span>
+        <span>Goluri medii: <b>${awayAvgGoals.toFixed(2)}</b></span>
+        <span class="${awayAvgGoals > awayAvgXG ? 'sim-nerf-text' : awayAvgGoals < awayAvgXG ? 'sim-boost-text' : ''}">
+          ${awayAvgGoals > awayAvgXG ? '🍀 Noroc' : awayAvgGoals < awayAvgXG ? '😤 Ghinion' : '⚖️ Neutru'}
+        </span>
+        <span>→ xG final: <b>${awayXGFinal.toFixed(2)}</b></span>
+      </div>
+    </div>
+    <div class="sim-xg-summary">
+      <div class="sim-xg-summary-title">Ajustare xGA defensiv (corecție noroc/ghinion 38%)</div>
+      <div class="sim-xg-row">
+        <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
+        <span>${event.homeTeam?.name}</span>
+        <span>xGA mediu: <b>${homeAvgXGA.toFixed(2)}</b></span>
+        <span>Goluri primite medii: <b>${homeAvgConceded.toFixed(2)}</b></span>
+        <span class="${homeAvgConceded < homeAvgXGA ? 'sim-nerf-text' : homeAvgConceded > homeAvgXGA ? 'sim-boost-text' : ''}">
+          ${homeAvgConceded < homeAvgXGA ? '🍀 Noroc' : homeAvgConceded > homeAvgXGA ? '😤 Ghinion' : '⚖️ Neutru'}
+        </span>
+        <span>→ xGA final: <b>${homeXGAFinal.toFixed(2)}</b></span>
+      </div>
+      <div class="sim-xg-row">
+        <img src="${awayLogoUrl}" onerror="this.src=''" alt="">
+        <span>${event.awayTeam?.name}</span>
+        <span>xGA mediu: <b>${awayAvgXGA.toFixed(2)}</b></span>
+        <span>Goluri primite medii: <b>${awayAvgConceded.toFixed(2)}</b></span>
+        <span class="${awayAvgConceded < awayAvgXGA ? 'sim-nerf-text' : awayAvgConceded > awayAvgXGA ? 'sim-boost-text' : ''}">
+          ${awayAvgConceded < awayAvgXGA ? '🍀 Noroc' : awayAvgConceded > awayAvgXGA ? '😤 Ghinion' : '⚖️ Neutru'}
+        </span>
+        <span>→ xGA final: <b>${awayXGAFinal.toFixed(2)}</b></span>
+      </div>
+    </div>
+  `);
+
+  // ── Simulare Monte Carlo ──
+  const lambdaHome = homeXGFinal;
+  const lambdaAway = awayXGFinal;
+
+  const simResultsSection = document.getElementById('simResultsSection');
+  simResultsSection.innerHTML = `<div class="sim-results-loading"><div class="spinner"></div><span>Se rulează simularea (100.000 meciuri)...</span></div>`;
+
+  const r = await runMonteCarlo(lambdaHome, lambdaAway, homeAvgPos, awayAvgPos);
+  simResultsSection.innerHTML = renderSimResults(r, event.homeTeam?.name, event.awayTeam?.name, homeLogoUrl, awayLogoUrl, lambdaHome, lambdaAway);
+}
+
+// ── STAT EXTRACTION ────────────────────────────────────────────────────────
+function getStatItem(statistics, key) {
+  if (!statistics) return null;
+  const allPeriod = statistics.find(s => s.period === 'ALL');
+  if (!allPeriod) return null;
+  for (const g of allPeriod.groups) {
+    const item = g.statisticsItems.find(i => i.key === key);
+    if (item) return item;
+  }
+  return null;
+}
+
+function getVal(stats, key, side) {
+  const item = getStatItem(stats, key);
+  if (!item) return null;
+  return side === 'home' ? item.homeValue : item.awayValue;
+}
+
+function getRate(stats, key, side) {
+  const item = getStatItem(stats, key);
+  if (!item) return null;
+  const v = side === 'home' ? item.homeValue : item.awayValue;
+  const t = side === 'home' ? item.homeTotal : item.awayTotal;
+  return (t != null && t > 0) ? v / t : null;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.match-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.match-tab[onclick*="${tab}"]`).classList.add('active');
+  document.getElementById('tabAnalysis').style.display = tab === 'analysis' ? '' : 'none';
+  document.getElementById('tabSimulation').style.display = tab === 'simulation' ? '' : 'none';
+  if (tab === 'simulation') loadSimulation();
+}
+
+(async () => {
+  event = await cacheGet('match_current');
+  renderHero();
+  loadLineups();
+  loadForm();
+})();
+</script>
+</body>
+</html>

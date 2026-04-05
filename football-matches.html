@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Matches</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #e8eaed;
+    --border: #d1d5db;
+    --accent: #2563eb;
+    --accent2: #ef4444;
+    --live: #ef4444;
+    --finished: #9ca3af;
+    --notstarted: #2563eb;
+    --postponed: #f97316;
+    --canceled: #d1d5db;
+    --text: #111827;
+    --muted: #6b7280;
+    --white: #111827;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(240,242,245,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--white); }
+
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .date-nav button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .date-nav button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .date-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .date-display:hover { border-color: var(--accent); }
+
+  input[type="date"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .stat-pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .pill-live { background: rgba(255,77,77,0.15); color: var(--live); border: 1px solid rgba(255,77,77,0.3); }
+  .pill-total { background: rgba(37,99,235,0.08); color: var(--accent); border: 1px solid rgba(37,99,235,0.2); }
+  .pill-api { background: rgba(107,114,128,0.08); color: var(--muted); border: 1px solid rgba(107,114,128,0.2); }
+
+  /* FILTERS */
+  .filters {
+    padding: 16px 32px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+
+  .filter-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .toggle-leagues {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toggle-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+  }
+
+  .toggle-switch input { display: none; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    transition: background 0.2s;
+  }
+
+  .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+
+  .toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+
+  .toggle-switch input:checked ~ .toggle-knob { transform: translateX(16px); }
+
+  .search-box {
+    margin-left: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    width: 200px;
+    transition: border-color 0.15s;
+  }
+
+  .search-box:focus { outline: none; border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  /* CONTENT */
+  .content {
+    padding: 24px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* LEAGUE GROUP */
+  .league-group {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .league-header {
+    background: var(--surface);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .league-header:hover { background: var(--surface2); }
+
+  .league-flag {
+    width: 20px;
+    height: 14px;
+    border-radius: 2px;
+    object-fit: cover;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .league-name {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .league-category {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .league-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .chevron {
+    color: var(--muted);
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+
+  .league-group.collapsed .chevron { transform: rotate(-90deg); }
+  .league-group.collapsed .matches-list { display: none; }
+
+  /* MATCH ROW */
+  .matches-list { background: var(--bg); }
+
+  .match-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto 1fr 80px;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    gap: 12px;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+
+  .match-row:hover { background: var(--surface); }
+
+  .match-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .match-time.live {
+    color: var(--live);
+    font-weight: 500;
+  }
+
+  .match-time .live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--live);
+    border-radius: 50%;
+    margin-right: 4px;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .team-home {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .team-away {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .team-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+
+  .team-name.winner { color: var(--white); font-weight: 600; }
+  .team-name.loser { color: var(--muted); }
+
+  .team-logo {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: var(--surface2);
+    flex-shrink: 0;
+    padding: 2px;
+  }
+
+  .score-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .score-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    min-width: 20px;
+    text-align: center;
+    color: var(--white);
+  }
+
+  .score-num.winner { color: var(--accent); }
+  .score-num.loser { color: var(--muted); }
+
+  .score-sep {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    color: var(--border);
+  }
+
+  .score-ns {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .match-status {
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .status-finished { color: var(--muted); }
+  .status-inprogress { color: var(--live); }
+  .status-notstarted { color: var(--notstarted); }
+  .status-postponed { color: var(--postponed); }
+  .status-canceled { color: var(--canceled); }
+
+  /* LOADING / EMPTY */
+  .loading {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--muted);
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+  }
+
+  .error-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    background: rgba(255,77,77,0.05);
+    border: 1px solid rgba(255,77,77,0.2);
+    border-radius: 8px;
+    margin: 20px 0;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">ULTIMATE<span> PREDICTOR</span></div>
+
+  <div class="date-nav">
+    <button id="prevDay">&#8592;</button>
+    <div class="date-display" id="dateDisplay" onclick="document.getElementById('datePicker').showPicker()">
+      —
+    </div>
+    <input type="date" id="datePicker" onchange="onDatePick(this.value)">
+    <button id="nextDay">&#8594;</button>
+  </div>
+
+  <div class="stats-bar">
+    <span class="stat-pill pill-total" id="totalCount">0 MECIURI</span>
+    <span class="stat-pill pill-api" id="apiQuota" style="display:none"></span>
+  </div>
+</header>
+
+<div class="filters">
+  <span class="filter-label">Status:</span>
+  <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">Toate</button>
+<button class="filter-btn" data-filter="finished" onclick="setFilter('finished', this)">Terminate</button>
+  <button class="filter-btn" data-filter="postponed" onclick="setFilter('postponed', this)">Amânate</button>
+  <input type="text" class="search-box" id="searchBox" placeholder="Caută echipă..." oninput="renderMatches()">
+</div>
+
+<div class="content" id="content">
+  <div class="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Se încarcă meciurile...</div>
+  </div>
+</div>
+
+<script>
+const API_KEY = '7913c774b3mshf3efcfbca776bf0p174928jsnad84967269fd';
+const API_HOST = 'sportapi7.p.rapidapi.com';
+
+function proxyImg(url) { return `/img-proxy?url=${encodeURIComponent(url)}`; }
+
+let currentDate = new Date();
+let allEvents = [];
+let currentFilter = 'all';
+
+// Cache pe disc via server
+async function cacheGet(key) {
+  try {
+    const res = await fetch(`/cache/${key}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function cacheSet(key, value) {
+  try {
+    await fetch(`/cache/${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value)
+    });
+  } catch(e) { console.warn('Cache write error:', e); }
+}
+
+const MAJOR_LEAGUE_IDS = new Set([
+  17,  // Premier League
+  18,  // Championship
+  35,  // Bundesliga
+  23,  // Serie A
+  34,  // Ligue 1
+  37,  // VriendenLoterij Eredivisie
+  8,   // LaLiga
+  152, // Romanian SuperLiga
+  52,  // Trendyol Süper Lig
+  38,  // Pro League
+  238, // Liga Portugal Betclic
+]);
+
+function isMajorLeague(event) {
+  const id = event.tournament?.uniqueTournament?.id;
+  return MAJOR_LEAGUE_IDS.has(id);
+}
+
+
+
+// Format date YYYY-MM-DD (local time, nu UTC)
+function formatDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Format ora locala din timestamp
+function formatTime(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Display date
+function formatDisplayDate(d) {
+  const azi = new Date();
+  const ieri = new Date(azi); ieri.setDate(azi.getDate()-1);
+  const maine = new Date(azi); maine.setDate(azi.getDate()+1);
+  const opts = { day: 'numeric', month: 'short', year: 'numeric' };
+  if (formatDate(d) === formatDate(azi)) return 'Astăzi · ' + d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
+  if (formatDate(d) === formatDate(ieri)) return 'Ieri · ' + d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
+  if (formatDate(d) === formatDate(maine)) return 'Mâine · ' + d.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('ro-RO', opts);
+}
+
+function updateDateDisplay() {
+  document.getElementById('dateDisplay').textContent = formatDisplayDate(currentDate);
+  document.getElementById('datePicker').value = formatDate(currentDate);
+}
+
+function onDatePick(val) {
+  currentDate = new Date(val + 'T12:00:00');
+  updateDateDisplay();
+  loadMatches();
+}
+
+document.getElementById('prevDay').onclick = () => {
+  currentDate.setDate(currentDate.getDate() - 1);
+  updateDateDisplay();
+  loadMatches();
+};
+
+document.getElementById('nextDay').onclick = () => {
+  currentDate.setDate(currentDate.getDate() + 1);
+  updateDateDisplay();
+  loadMatches();
+};
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMatches();
+}
+
+async function loadMatches() {
+  const dateStr = formatDate(currentDate);
+  const cacheKey = `matches_${dateStr}`;
+  const cached = await cacheGet(cacheKey);
+
+  if (cached) {
+    const todayStr = formatDate(new Date());
+    const isPast = dateStr < todayStr;
+    const hasStale = cached.some(e =>
+      e.status?.type === 'notstarted' || e.status?.type === 'inprogress'
+    );
+    // Cache-ul pentru zile trecute cu meciuri neterminate e invalid → refetch
+    if (!isPast || !hasStale) {
+      allEvents = cached;
+      renderMatches();
+      return;
+    }
+  }
+
+  document.getElementById('content').innerHTML = `
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Se încarcă meciurile...</div>
+    </div>`;
+
+  try {
+    const res = await fetch(`https://${API_HOST}/api/v1/sport/football/scheduled-events/${dateStr}`, {
+      headers: {
+        'x-rapidapi-host': API_HOST,
+        'x-rapidapi-key': API_KEY
+      }
+    });
+    const remaining = res.headers.get('x-ratelimit-requests-remaining');
+    const limit = res.headers.get('x-ratelimit-requests-limit');
+    if (remaining !== null && limit !== null) {
+      const quota = document.getElementById('apiQuota');
+      quota.textContent = `API: ${Number(remaining).toLocaleString()} / ${Number(limit).toLocaleString()}`;
+      quota.style.display = '';
+      await cacheSet('api_quota', { remaining, limit });
+    }
+    const data = await res.json();
+    if (!data.events) throw new Error(data.error?.message || 'Eroare API');
+    allEvents = data.events;
+    await cacheSet(cacheKey, allEvents);
+    renderMatches();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `
+      <div class="error-state">⚠ ${e.message}</div>`;
+  }
+}
+
+function renderMatches() {
+  const search = document.getElementById('searchBox').value.toLowerCase();
+
+  const selectedDateStr = formatDate(currentDate);
+
+  let filtered = allEvents.filter(e => {
+    if (!isMajorLeague(e)) return false;
+    if (e.status?.type === 'inprogress') return false;
+    // Filtrare strictă după data locală a meciului
+    if (e.startTimestamp && formatDate(new Date(e.startTimestamp * 1000)) !== selectedDateStr) return false;
+    if (currentFilter !== 'all' && e.status?.type !== currentFilter) return false;
+    if (search) {
+      const h = e.homeTeam?.name?.toLowerCase() || '';
+      const a = e.awayTeam?.name?.toLowerCase() || '';
+      const t = e.tournament?.name?.toLowerCase() || '';
+      if (!h.includes(search) && !a.includes(search) && !t.includes(search)) return false;
+    }
+    return true;
+  });
+
+  // Stats
+  document.getElementById('totalCount').textContent = filtered.length + ' MECIURI';
+
+  if (filtered.length === 0) {
+    document.getElementById('content').innerHTML = `<div class="empty-state">Niciun meci găsit pentru filtrele selectate.</div>`;
+    return;
+  }
+
+  // Group by tournament
+  const groups = {};
+  filtered.forEach(e => {
+    const key = e.tournament?.uniqueTournament?.id || e.tournament?.name || 'other';
+    if (!groups[key]) groups[key] = {
+      name: e.tournament?.name || '—',
+      category: e.tournament?.category?.name || '',
+      flag: e.tournament?.category?.flag || '',
+      events: []
+    };
+    groups[key].events.push(e);
+  });
+
+  // Sort groups: live first, then by name
+  const sortedGroups = Object.values(groups).sort((a, b) => {
+    const aLive = a.events.some(e => e.status?.type === 'inprogress') ? 0 : 1;
+    const bLive = b.events.some(e => e.status?.type === 'inprogress') ? 0 : 1;
+    return aLive - bLive || a.name.localeCompare(b.name);
+  });
+
+  let html = '';
+  sortedGroups.forEach((group, gi) => {
+    const eventsHtml = group.events
+      .sort((a, b) => (a.startTimestamp || 0) - (b.startTimestamp || 0))
+      .map(e => renderMatchRow(e))
+      .join('');
+
+    html += `
+      <div class="league-group" style="animation-delay: ${gi * 0.03}s">
+        <div class="league-header" onclick="toggleGroup(this)">
+          <img class="league-flag" src="${proxyImg(`https://www.sofascore.com/static/images/flags/${group.flag}.png`)}"
+               onerror="this.style.display='none'" alt="">
+          <span class="league-name">${group.name}</span>
+          <span class="league-category">${group.category}</span>
+          <span class="league-count">${group.events.length}</span>
+          <span class="chevron">▼</span>
+        </div>
+        <div class="matches-list">${eventsHtml}</div>
+      </div>`;
+  });
+
+  document.getElementById('content').innerHTML = html;
+}
+
+
+function renderMatchRow(e) {
+  const status = e.status?.type || 'notstarted';
+  const isLive = status === 'inprogress';
+  const isFinished = status === 'finished';
+  const isNS = status === 'notstarted';
+
+  // Winner
+  const hw = e.winnerCode === 1;
+  const aw = e.winnerCode === 2;
+
+  // Time display
+  let timeHtml = '';
+  if (isLive) {
+    const min = e.time?.currentPeriodStartTimestamp
+      ? Math.floor((Date.now()/1000 - e.time.currentPeriodStartTimestamp) / 60)
+      : '?';
+    timeHtml = `<div class="match-time live"><span class="live-dot"></span>${min}'</div>`;
+  } else if (isNS) {
+    timeHtml = `<div class="match-time" style="color:var(--accent)">${formatTime(e.startTimestamp)}</div>`;
+  } else {
+    timeHtml = `<div class="match-time">${formatTime(e.startTimestamp)}</div>`;
+  }
+
+  // Score
+  let scoreHtml = '';
+  if (isNS) {
+    scoreHtml = `<div class="score-box"><span class="score-ns">vs</span></div>`;
+  } else {
+    const hScore = e.homeScore?.display ?? '?';
+    const aScore = e.awayScore?.display ?? '?';
+    scoreHtml = `
+      <div class="score-box">
+        <span class="score-num ${isFinished ? (hw ? 'winner' : 'loser') : ''}">${hScore}</span>
+        <span class="score-sep">:</span>
+        <span class="score-num ${isFinished ? (aw ? 'winner' : 'loser') : ''}">${aScore}</span>
+      </div>`;
+  }
+
+  // Status label
+  const statusLabels = {
+    finished: 'FT',
+    inprogress: 'LIVE',
+    notstarted: '',
+    postponed: 'AMÂNAT',
+    canceled: 'ANULAT'
+  };
+
+  const homeLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${e.homeTeam?.id}/image`);
+  const awayLogoUrl = proxyImg(`https://api.sofascore.app/api/v1/team/${e.awayTeam?.id}/image`);
+
+  return `
+    <div class="match-row" onclick="openMatch(${e.id})">
+      ${timeHtml}
+      <div class="team-home">
+        <span class="team-name ${isFinished ? (hw ? 'winner' : 'loser') : ''}">${e.homeTeam?.name || '—'}</span>
+        <img class="team-logo" src="${homeLogoUrl}" onerror="this.src=''" alt="">
+      </div>
+      ${scoreHtml}
+      <div class="team-away">
+        <img class="team-logo" src="${awayLogoUrl}" onerror="this.src=''" alt="">
+        <span class="team-name ${isFinished ? (aw ? 'winner' : 'loser') : ''}">${e.awayTeam?.name || '—'}</span>
+      </div>
+      <div class="match-status status-${status}">${statusLabels[status] || status}</div>
+    </div>`;
+}
+
+function toggleGroup(header) {
+  header.parentElement.classList.toggle('collapsed');
+}
+
+async function openMatch(eventId) {
+  const event = allEvents.find(e => e.id === eventId);
+  if (!event) return;
+  await cacheSet('match_current', event);
+  window.open('match.html', '_blank');
+}
+
+// Init
+updateDateDisplay();
+loadMatches();
+
+// Afiseaza ultima valoare API quota din cache
+cacheGet('api_quota').then(savedQuota => {
+  if (savedQuota) {
+    const quota = document.getElementById('apiQuota');
+    quota.textContent = `API: ${Number(savedQuota.remaining).toLocaleString()} / ${Number(savedQuota.limit).toLocaleString()}`;
+    quota.style.display = '';
+  }
+});
+
+</script>
+</body>
+</html>
