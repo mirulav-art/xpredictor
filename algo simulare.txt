@@ -1,25 +1,21 @@
-Cap. 1 Adunarea datelor.
+ok, acum am alta idee...
+verificam fiecare din ultimele 5 meciuri ale echipelor si spunem asa ...
+
+1 ai jucat cu o echipa mai slaba fata de cea actuala si :
+ - ai castigat : boost moderat
+ - egal : boost boost mic
+ - ai pierdut : nerf mare
+
+2 ai jucat cu o echipa de calibrul celei actuale si :
+ - ai castigat : boost mare
+ - egal : boost boost moderat
+ - ai pierdut : nerf moderat
 
 
-1 .  Luam statisticile complete ale ambelor echipe pe  :
--ultimele 5 meciuri  acasa pentru echipa gazda 
--ultimele 5 meciuri in deplasare pentru echipa oaspete
-Cele ultimele 5 meciuri vor fi strict din campionatul in care se joaca meciul prezent
-statisticile vor fi separate pe fiecare meci in parte.
+3 ai jucat cu o echipa mai puternica decat cea actuala si :
+ - ai castigat : boost maxim
+ - egal : boost boost mare
+ - ai pierdut : nerf mic
 
 
 
-2.  pentru fiecare iterație (meci) luam un meci random din cele 5 avute la dispozitie pentru fiecare echipa si folosim acele statistici in simulare
-
-
-
-
-Cap. 2 Simularea.
-
-1. Fiecare iteratie reprezentand 1 minut de joc va incepe cu atribuirea posesiei uneia dintre echipe, aceasta alegere se va face pe baza procentului de posesie al echipelor.  Procentele de posesie ale echipelor vor avea o variatie de +-5% in fiecare minut de joc. In functie de ce se va intampla in pasii urmatori, posesia va putea fi atribuita direct unei echipe in functie de cum evolueaza lucrurile
-
-
-
-2. Echipa care are posesia trece la atac. Aici vom lua in calcul cat de eficienta este echipa in a ataca si cat de eficienta este echipa adversa in a respinge sau a recupera mingea. Daca Echipa cu posesia primeste true, trecem la pasul urmator, daca echipa adversa reuseste sa recupereze mingea, automat revenim la pasul 1 si le atribuim posesia (au recuperat mingea)
-
-3 . Urmatorul pas presupune un sut. 

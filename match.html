@@ -1885,7 +1885,26 @@
           return 0;
         const diff = ppgPastOpp - ppgActualOpp;
         const clamped = Math.max(-1, Math.min(1, diff / maxDiff));
-        return +(clamped * 20).toFixed(1);
+        return +(clamped * 40).toFixed(1);
+      }
+
+      function calcFormFactor(dataArr, ppgActualOpp, maxDiff) {
+        const THRESHOLD = maxDiff * 0.15;
+        for (const d of dataArr) {
+          const e = d.event;
+          const hg = e.homeScore?.display ?? 0;
+          const ag = e.awayScore?.display ?? 0;
+          let result;
+          if (d.side === 'home') result = hg > ag ? 'W' : hg === ag ? 'D' : 'L';
+          else                   result = ag > hg ? 'W' : ag === hg ? 'D' : 'L';
+          let category = 'similar';
+          if (d.ppgPast != null && ppgActualOpp != null && maxDiff > 0) {
+            const diff = d.ppgPast - ppgActualOpp;
+            if (diff < -THRESHOLD) category = 'weaker';
+            else if (diff > THRESHOLD) category = 'stronger';
+          }
+          d.formInfo = { category, result };
+        }
       }
 
       async function fetchEventStatistics(eventId) {
@@ -1938,7 +1957,7 @@
         }
       }
 
-      function runMonteCarlo(lambdaHome, lambdaAway, homePosPct, awayPosPct) {
+      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct, awayPosPct) {
         return new Promise((resolve) =>
           setTimeout(() => {
             const N = 100000;
@@ -1953,7 +1972,9 @@
             const homePosBase = homePosPct / (homePosPct + awayPosPct);
 
             for (let s = 0; s < N; s++) {
-              const dur = 91 + Math.floor(Math.random() * 8); // 91-98
+              const dur1H = 45 + Math.floor(Math.random() * 5); // 45-49
+              const dur2H = 45 + Math.floor(Math.random() * 8); // 45-52
+              const dur = dur1H + dur2H;
               let hg = 0,
                 ag = 0;
               let hStreak = 0,
@@ -1973,8 +1994,11 @@
                   hStreak = 0;
                 }
 
-                const lh = (lambdaHome / dur) * (hStreak > 3 ? 1.15 : 1);
-                const la = (lambdaAway / dur) * (aStreak > 3 ? 1.15 : 1);
+                const isFirst = m < dur1H;
+                const lhBase = isFirst ? lambdaHome1H / dur1H : lambdaHome2H / dur2H;
+                const laBase = isFirst ? lambdaAway1H / dur1H : lambdaAway2H / dur2H;
+                const lh = lhBase * (hStreak > 3 ? 1.15 : 1);
+                const la = laBase * (aStreak > 3 ? 1.15 : 1);
                 if (Math.random() < 1 - Math.exp(-lh)) hg++;
                 if (Math.random() < 1 - Math.exp(-la)) ag++;
               }
@@ -2012,8 +2036,10 @@
         awayName,
         homeLogoUrl,
         awayLogoUrl,
-        lh,
-        la,
+        lh1,
+        lh2,
+        la1,
+        la2,
       ) {
         function toOdds(pct) {
           if (!pct || pct < 0.5) return "—";
@@ -2063,7 +2089,7 @@
         <span style="font-family:'DM Sans',sans-serif;font-weight:600;font-size:15px">${awayName}</span>
         <img src="${awayLogoUrl}" onerror="this.src=''" style="width:32px;height:32px" alt="">
       </div>
-      <div class="sim-results-lambda">λ home: ${lh.toFixed(3)} · λ away: ${la.toFixed(3)} · 100.000 simulări</div>
+      <div class="sim-results-lambda">λ home: ${lh1.toFixed(2)}+${lh2.toFixed(2)} · λ away: ${la1.toFixed(2)}+${la2.toFixed(2)} · 100.000 simulări</div>
     </div>
 
     <div class="sim-block">
@@ -2288,6 +2314,27 @@
           if (!statsCached || !lineupCached) await delay(300);
         }
 
+        // ── Form factor: populează d.formInfo per meci ──
+        calcFormFactor(homeData, ppgActualOppHome, maxDiff);
+        calcFormFactor(awayData, ppgActualOppAway, maxDiff);
+
+        // ── Ajustare xG/xGA per meci pe baza formei contextuale ──
+        const XG_ADJ  = { weaker: { W: +7, D: -10, L: -20 }, similar: { W: +13, D: +10, L: -12 }, stronger: { W: +20, D: +15, L: -5 } };
+        const XGA_ADJ = { weaker: { W: -7, D: +10, L: +20 }, similar: { W: -13, D: -10, L: +12 }, stronger: { W: -20, D: -15, L: +5 } };
+        function applyFormAdj(dataArr) {
+          for (const d of dataArr) {
+            if (d.formInfo) {
+              const { category, result } = d.formInfo;
+              d.xGMult  = 1 + (XG_ADJ[category][result]  ?? 0) / 100;
+              d.xGAMult = 1 + (XGA_ADJ[category][result] ?? 0) / 100;
+            } else {
+              d.xGMult = 1; d.xGAMult = 1;
+            }
+          }
+        }
+        applyFormAdj(homeData);
+        applyFormAdj(awayData);
+
         // ── Ponderi per meci: lineupSim × PPG proximity, normalizat ──
         function calcMatchWeights(dataArr, ppgActualOpp) {
           const raw = dataArr.map((d) => {
@@ -2299,7 +2346,7 @@
                 1 - Math.abs(d.ppgPast - ppgActualOpp) / maxDiff,
               );
             }
-            return lf * pf;
+            return lf;
           });
           const sum = raw.reduce((a, b) => a + b, 0);
           const norm =
@@ -2314,23 +2361,29 @@
         calcMatchWeights(homeData, ppgActualOppHome);
         calcMatchWeights(awayData, ppgActualOppAway);
 
-        // Helper: badge boost/nerf
-        function adjBadgeHtml(
-          factor,
-          pastOppName,
-          actualOppName,
-          ppgPast,
-          ppgActual,
-        ) {
-          const sign = factor > 0 ? "+" : "";
-          const cls =
-            factor > 0 ? "sim-boost" : factor < 0 ? "sim-nerf" : "sim-neutral";
-          const label = factor > 0 ? "BOOST" : factor < 0 ? "NERF" : "NEUTRU";
+        // Helper: badge formă
+        function adjBadgeHtml(formInfo, xGMult, xGAMult, pastOppName, ppgPast, ppgActual) {
+          if (!formInfo) return '';
+          const { category, result } = formInfo;
+          const resultLabel = result === 'W' ? 'Victorie' : result === 'D' ? 'Egal' : 'Înfrângere';
+          const catLabel = category === 'weaker' ? 'adv. mai slab' : category === 'stronger' ? 'adv. mai puternic' : 'adv. similar';
+          const xGPct  = Math.round((xGMult  - 1) * 100);
+          const xGAPct = Math.round((xGAMult - 1) * 100);
+          const fmt = (v) => (v >= 0 ? `+${v}` : `${v}`);
+          const xGCls  = xGPct  > 0 ? 'sim-boost-text' : xGPct  < 0 ? 'sim-nerf-text' : '';
+          const xGACls = xGAPct < 0 ? 'sim-boost-text' : xGAPct > 0 ? 'sim-nerf-text' : '';
+          const modStr = (xGPct === 0 && xGAPct === 0)
+            ? '⚖️ Neutru'
+            : `xG <span class="${xGCls}">${fmt(xGPct)}%</span> · xGA <span class="${xGACls}">${fmt(xGAPct)}%</span>`;
+          const cls = result === 'W' ? 'sim-boost'
+            : result === 'L' ? 'sim-nerf'
+            : category === 'stronger' ? 'sim-boost'
+            : category === 'weaker'   ? 'sim-nerf'
+            : 'sim-neutral';
           return `
       <div class="sim-adjustment ${cls}">
-        <div class="sim-adjustment-top">${label} ${sign}${factor}%</div>
-        <div class="sim-adj-detail">Adv. trecut: ${pastOppName || "—"} (${ppgPast != null ? ppgPast.toFixed(2) : "—"} PPG)</div>
-        <div class="sim-adj-detail">Adv. actual: ${actualOppName || "—"} (${ppgActual != null ? ppgActual.toFixed(2) : "—"} PPG)</div>
+        <div class="sim-adjustment-top">${resultLabel} vs ${catLabel} → ${modStr}</div>
+        <div class="sim-adj-detail">${pastOppName || "—"} · ${ppgPast != null ? ppgPast.toFixed(2) : "—"} PPG · adv. actual: ${ppgActual != null ? ppgActual.toFixed(2) : "—"} PPG</div>
       </div>`;
         }
 
@@ -2354,7 +2407,7 @@
           </div>
           <div class="sim-stat-badge ${badgeClass}"><div class="sim-stat-dot"></div>${badgeText}</div>
         </div>
-        ${adjBadgeHtml(d.factor, d.pastOpp?.name, actualOppName, d.ppgPast, ppgActualOpp)}
+        ${adjBadgeHtml(d.formInfo, d.xGMult ?? 1, d.xGAMult ?? 1, d.pastOpp?.name, d.ppgPast, ppgActualOpp)}
       </div>`;
         }
 
@@ -2384,11 +2437,15 @@
           const s = d.stats;
           const side = d.side;
           const oppSide = side === "home" ? "away" : "home";
-          const m = 1 + d.factor / 100;
+          const m = 1; // PPG boost/nerf eliminat
 
           const possession = (getVal(s, "ballPossession", side) ?? 50) * m;
-          const xG = (getVal(s, "expectedGoals", side) ?? 0) * m;
-          const xGA = (getVal(s, "expectedGoals", oppSide) ?? 0) / m;
+          const xG   = (getVal(s, "expectedGoals", side) ?? 0) * m;
+          const xGA  = (getVal(s, "expectedGoals", oppSide) ?? 0) / m;
+          const xG1H  = (getValByPeriod(s, "expectedGoals", side, "1ST") ?? 0) * m;
+          const xG2H  = (getValByPeriod(s, "expectedGoals", side, "2ND") ?? 0) * m;
+          const xGA1H = (getValByPeriod(s, "expectedGoals", oppSide, "1ST") ?? 0) / m;
+          const xGA2H = (getValByPeriod(s, "expectedGoals", oppSide, "2ND") ?? 0) / m;
 
           const ev = d.event;
           const rawScored =
@@ -2402,7 +2459,7 @@
           const goalsScored = rawScored * m;
           const goalsConceded = rawConceded / m;
 
-          return { possession, xG, xGA, goalsScored, goalsConceded };
+          return { possession, xG, xGA, xG1H, xG2H, xGA1H, xGA2H, goalsScored, goalsConceded };
         }
 
         // Afișare verificare statistici ajustate + similaritate lineup + pondere
@@ -2515,14 +2572,17 @@
         function wAvg(dataArr, key) {
           const withStats = dataArr.filter((d) => d.stats);
           if (!withStats.length) return 0;
+          const isXG  = ["xG", "xG1H", "xG2H"].includes(key);
+          const isXGA = ["xGA", "xGA1H", "xGA2H"].includes(key);
+          const getMult = (d) => isXG ? (d.xGMult ?? 1) : isXGA ? (d.xGAMult ?? 1) : 1;
           const totalW = withStats.reduce((s, d) => s + (d.weight ?? 0), 0);
           if (totalW === 0) {
-            const vals = withStats.map((d) => extractAdjusted(d)[key]);
+            const vals = withStats.map((d) => extractAdjusted(d)[key] * getMult(d));
             return vals.reduce((a, b) => a + b, 0) / vals.length;
           }
           return (
             withStats.reduce(
-              (s, d) => s + extractAdjusted(d)[key] * (d.weight ?? 0),
+              (s, d) => s + extractAdjusted(d)[key] * getMult(d) * (d.weight ?? 0),
               0,
             ) / totalW
           );
@@ -2531,36 +2591,37 @@
         const homeAvgPos = wAvg(homeData, "possession");
         const awayAvgPos = wAvg(awayData, "possession");
 
-        // xG ofensiv
+        // xG ofensiv — blend spre goluri reale (finalizare slabă/bună)
+        const BLEND = 0.38;
         const homeAvgXG = wAvg(homeData, "xG");
         const homeAvgGoals = wAvg(homeData, "goalsScored");
-        const homeXGFinal = homeAvgXG - 0.38 * (homeAvgGoals - homeAvgXG);
+        const homeXGFinal = homeAvgXG * (1 - BLEND) + homeAvgGoals * BLEND;
 
         const awayAvgXG = wAvg(awayData, "xG");
         const awayAvgGoals = wAvg(awayData, "goalsScored");
-        const awayXGFinal = awayAvgXG - 0.38 * (awayAvgGoals - awayAvgXG);
+        const awayXGFinal = awayAvgXG * (1 - BLEND) + awayAvgGoals * BLEND;
 
-        // xGA defensiv
+        // xGA defensiv — blend spre goluri primite reale (apărare solidă/slabă)
         const homeAvgXGA = wAvg(homeData, "xGA");
         const homeAvgConceded = wAvg(homeData, "goalsConceded");
-        const homeXGAFinal = homeAvgXGA - 0.38 * (homeAvgConceded - homeAvgXGA);
+        const homeXGAFinal = homeAvgXGA * (1 - BLEND) + homeAvgConceded * BLEND;
 
         const awayAvgXGA = wAvg(awayData, "xGA");
         const awayAvgConceded = wAvg(awayData, "goalsConceded");
-        const awayXGAFinal = awayAvgXGA - 0.38 * (awayAvgConceded - awayAvgXGA);
+        const awayXGAFinal = awayAvgXGA * (1 - BLEND) + awayAvgConceded * BLEND;
 
         document.getElementById("simVerifySection").insertAdjacentHTML(
           "beforeend",
           `
     <div class="sim-xg-summary">
-      <div class="sim-xg-summary-title">Ajustare xG ofensiv (corecție noroc/ghinion 38%)</div>
+      <div class="sim-xg-summary-title">Ajustare xG ofensiv (blend xG ↔ goluri reale 38%)</div>
       <div class="sim-xg-row">
         <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
         <span>${event.homeTeam?.name}</span>
         <span>xG mediu: <b>${homeAvgXG.toFixed(2)}</b></span>
         <span>Goluri medii: <b>${homeAvgGoals.toFixed(2)}</b></span>
-        <span class="${homeAvgGoals > homeAvgXG ? "sim-nerf-text" : homeAvgGoals < homeAvgXG ? "sim-boost-text" : ""}">
-          ${homeAvgGoals > homeAvgXG ? "🍀 Noroc" : homeAvgGoals < homeAvgXG ? "😤 Ghinion" : "⚖️ Neutru"}
+        <span class="${homeAvgGoals > homeAvgXG ? "sim-boost-text" : homeAvgGoals < homeAvgXG ? "sim-nerf-text" : ""}">
+          ${homeAvgGoals > homeAvgXG ? "✅ Finalizare bună" : homeAvgGoals < homeAvgXG ? "❌ Finalizare slabă" : "⚖️ Neutru"}
         </span>
         <span>→ xG final: <b>${homeXGFinal.toFixed(2)}</b></span>
       </div>
@@ -2569,21 +2630,21 @@
         <span>${event.awayTeam?.name}</span>
         <span>xG mediu: <b>${awayAvgXG.toFixed(2)}</b></span>
         <span>Goluri medii: <b>${awayAvgGoals.toFixed(2)}</b></span>
-        <span class="${awayAvgGoals > awayAvgXG ? "sim-nerf-text" : awayAvgGoals < awayAvgXG ? "sim-boost-text" : ""}">
-          ${awayAvgGoals > awayAvgXG ? "🍀 Noroc" : awayAvgGoals < awayAvgXG ? "😤 Ghinion" : "⚖️ Neutru"}
+        <span class="${awayAvgGoals > awayAvgXG ? "sim-boost-text" : awayAvgGoals < awayAvgXG ? "sim-nerf-text" : ""}">
+          ${awayAvgGoals > awayAvgXG ? "✅ Finalizare bună" : awayAvgGoals < awayAvgXG ? "❌ Finalizare slabă" : "⚖️ Neutru"}
         </span>
         <span>→ xG final: <b>${awayXGFinal.toFixed(2)}</b></span>
       </div>
     </div>
     <div class="sim-xg-summary">
-      <div class="sim-xg-summary-title">Ajustare xGA defensiv (corecție noroc/ghinion 38%)</div>
+      <div class="sim-xg-summary-title">Ajustare xGA defensiv (blend xGA ↔ goluri primite reale 38%)</div>
       <div class="sim-xg-row">
         <img src="${homeLogoUrl}" onerror="this.src=''" alt="">
         <span>${event.homeTeam?.name}</span>
         <span>xGA mediu: <b>${homeAvgXGA.toFixed(2)}</b></span>
         <span>Goluri primite medii: <b>${homeAvgConceded.toFixed(2)}</b></span>
-        <span class="${homeAvgConceded < homeAvgXGA ? "sim-nerf-text" : homeAvgConceded > homeAvgXGA ? "sim-boost-text" : ""}">
-          ${homeAvgConceded < homeAvgXGA ? "🍀 Noroc" : homeAvgConceded > homeAvgXGA ? "😤 Ghinion" : "⚖️ Neutru"}
+        <span class="${homeAvgConceded < homeAvgXGA ? "sim-boost-text" : homeAvgConceded > homeAvgXGA ? "sim-nerf-text" : ""}">
+          ${homeAvgConceded < homeAvgXGA ? "✅ Apărare solidă" : homeAvgConceded > homeAvgXGA ? "❌ Apărare slabă" : "⚖️ Neutru"}
         </span>
         <span>→ xGA final: <b>${homeXGAFinal.toFixed(2)}</b></span>
       </div>
@@ -2592,14 +2653,38 @@
         <span>${event.awayTeam?.name}</span>
         <span>xGA mediu: <b>${awayAvgXGA.toFixed(2)}</b></span>
         <span>Goluri primite medii: <b>${awayAvgConceded.toFixed(2)}</b></span>
-        <span class="${awayAvgConceded < awayAvgXGA ? "sim-nerf-text" : awayAvgConceded > awayAvgXGA ? "sim-boost-text" : ""}">
-          ${awayAvgConceded < awayAvgXGA ? "🍀 Noroc" : awayAvgConceded > awayAvgXGA ? "😤 Ghinion" : "⚖️ Neutru"}
+        <span class="${awayAvgConceded < awayAvgXGA ? "sim-boost-text" : awayAvgConceded > awayAvgXGA ? "sim-nerf-text" : ""}">
+          ${awayAvgConceded < awayAvgXGA ? "✅ Apărare solidă" : awayAvgConceded > awayAvgXGA ? "❌ Apărare slabă" : "⚖️ Neutru"}
         </span>
         <span>→ xGA final: <b>${awayXGAFinal.toFixed(2)}</b></span>
       </div>
     </div>
   `,
         );
+
+        // ── Lambda combinat: xG ofensiv propriu + xGA defensiv al adversarului ──
+        const lambdaHomeCombined = (homeXGFinal + awayXGAFinal) / 2;
+        const lambdaAwayCombined = (awayXGFinal + homeXGAFinal) / 2;
+
+        // ── Split pe reprize pe baza ratio-ului xG1H/xG2H ──
+        const homeAvgXG1H = wAvg(homeData, "xG1H");
+        const homeAvgXG2H = wAvg(homeData, "xG2H");
+        const homeHalfTotal = homeAvgXG1H + homeAvgXG2H;
+        const homeRatio1H = homeHalfTotal > 0 ? homeAvgXG1H / homeHalfTotal : 0.5;
+        const lambdaHome1H = lambdaHomeCombined * homeRatio1H;
+        const lambdaHome2H = lambdaHomeCombined * (1 - homeRatio1H);
+
+        const awayAvgXG1H = wAvg(awayData, "xG1H");
+        const awayAvgXG2H = wAvg(awayData, "xG2H");
+        const awayHalfTotal = awayAvgXG1H + awayAvgXG2H;
+        const awayRatio1H = awayHalfTotal > 0 ? awayAvgXG1H / awayHalfTotal : 0.5;
+        const lambdaAway1H = lambdaAwayCombined * awayRatio1H;
+        const lambdaAway2H = lambdaAwayCombined * (1 - awayRatio1H);
+
+        const lambdaHome1HFinal = lambdaHome1H;
+        const lambdaHome2HFinal = lambdaHome2H;
+        const lambdaAway1HFinal = lambdaAway1H;
+        const lambdaAway2HFinal = lambdaAway2H;
 
         // ── Simulare Monte Carlo ──
         const lambdaHome = homeXGFinal;
@@ -2609,8 +2694,10 @@
         simResultsSection.innerHTML = `<div class="sim-results-loading"><div class="spinner"></div><span>Se rulează simularea (100.000 meciuri)...</span></div>`;
 
         const r = await runMonteCarlo(
-          lambdaHome,
-          lambdaAway,
+          lambdaHome1HFinal,
+          lambdaHome2HFinal,
+          lambdaAway1HFinal,
+          lambdaAway2HFinal,
           homeAvgPos,
           awayAvgPos,
         );
@@ -2620,8 +2707,10 @@
           event.awayTeam?.name,
           homeLogoUrl,
           awayLogoUrl,
-          lambdaHome,
-          lambdaAway,
+          lambdaHome1HFinal,
+          lambdaHome2HFinal,
+          lambdaAway1HFinal,
+          lambdaAway2HFinal,
         );
       }
 
@@ -2633,6 +2722,17 @@
         for (const g of allPeriod.groups) {
           const item = g.statisticsItems.find((i) => i.key === key);
           if (item) return item;
+        }
+        return null;
+      }
+
+      function getValByPeriod(stats, key, side, period) {
+        if (!stats) return null;
+        const p = stats.find((s) => s.period === period);
+        if (!p) return null;
+        for (const g of p.groups) {
+          const item = g.statisticsItems.find((i) => i.key === key);
+          if (item) return side === "home" ? item.homeValue : item.awayValue;
         }
         return null;
       }
