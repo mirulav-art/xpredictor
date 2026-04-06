@@ -1883,24 +1883,32 @@
 
         // ── încearcă lineup-ul meciului curent ──
         let data = null;
-        try {
-          const res = await fetch(
-            `https://${API_HOST}/api/v1/event/${event.id}/lineups`,
-            { headers: { "x-rapidapi-host": API_HOST, "x-rapidapi-key": API_KEY } },
-          );
-          const raw = await res.json();
-          const hasHome = raw.home?.players?.length > 0;
-          const hasAway = raw.away?.players?.length > 0;
-          if (hasHome || hasAway) {
-            data = raw;
-            if (raw.confirmed) await cacheSet(`lineups_${event.id}`, raw);
+
+        // 1) verifică cache-ul mai întâi
+        const cachedLineup = await cacheGet(`lineups_${event.id}`);
+        if (cachedLineup?.home?.players?.length > 0 || cachedLineup?.away?.players?.length > 0) {
+          data = cachedLineup;
+        } else {
+          // 2) fetch din API
+          try {
+            const res = await fetch(
+              `https://${API_HOST}/api/v1/event/${event.id}/lineups`,
+              { headers: { "x-rapidapi-host": API_HOST, "x-rapidapi-key": API_KEY } },
+            );
+            const raw = await res.json();
+            const hasHome = raw.home?.players?.length > 0;
+            const hasAway = raw.away?.players?.length > 0;
+            if (hasHome || hasAway) {
+              data = raw;
+              if (raw.confirmed) await cacheSet(`lineups_${event.id}`, raw);
+            }
+          } catch (e) {
+            document.getElementById("homePitch").innerHTML =
+              '<div class="empty-form">Eroare la încărcarea formațiilor.</div>';
+            document.getElementById("awayPitch").innerHTML = "";
+            resolveLineupLoad();
+            return;
           }
-        } catch (e) {
-          document.getElementById("homePitch").innerHTML =
-            '<div class="empty-form">Eroare la încărcarea formațiilor.</div>';
-          document.getElementById("awayPitch").innerHTML = "";
-          resolveLineupLoad();
-          return;
         }
 
         currentLineupData = data;
