@@ -849,12 +849,15 @@
       }
       .sim-results-loading {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 12px;
-        padding: 24px;
+        justify-content: center;
+        gap: 10px;
+        padding: 32px;
         font-family: "DM Mono", monospace;
         font-size: 13px;
         color: var(--muted);
+        text-align: center;
       }
       .sim-results-header {
         text-align: center;
@@ -1790,6 +1793,7 @@
         logoUrl,
         isHome,
         confirmed,
+        isFallback = false,
       ) {
         const container = document.getElementById(containerId);
 
@@ -1825,7 +1829,9 @@
           })
           .join("");
 
-        const statusHtml = confirmed
+        const statusHtml = isFallback
+          ? `<span class="lineup-status lineup-unconfirmed"><span class="lineup-dot"></span>Lineup anterior</span>`
+          : confirmed
           ? `<span class="lineup-status lineup-confirmed"><span class="lineup-dot"></span>Lineup confirmat</span>`
           : `<span class="lineup-status lineup-unconfirmed"><span class="lineup-dot"></span>Lineup neconfirmat</span>`;
 
@@ -1870,69 +1876,96 @@
       }
 
       async function loadLineups() {
-        if (!event) return;
+        if (!event) { resolveLineupLoad(); return; }
 
-        const cacheKey = `lineups_${event.id}`;
-        let data = await cacheGet(cacheKey);
+        const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`;
+        const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`;
 
-        if (!data) {
-          try {
-            const res = await fetch(
-              `https://${API_HOST}/api/v1/event/${event.id}/lineups`,
-              {
-                headers: {
-                  "x-rapidapi-host": API_HOST,
-                  "x-rapidapi-key": API_KEY,
-                },
-              },
-            );
-            data = await res.json();
-            if ((data.home || data.away) && data.confirmed)
-              await cacheSet(cacheKey, data);
-            else if (!data.home && !data.away) data = null;
-          } catch (e) {
-            document.getElementById("homePitch").innerHTML =
-              '<div class="empty-form">Eroare la încărcarea formațiilor.</div>';
-            document.getElementById("awayPitch").innerHTML = "";
-            return;
+        // ── încearcă lineup-ul meciului curent ──
+        let data = null;
+        try {
+          const res = await fetch(
+            `https://${API_HOST}/api/v1/event/${event.id}/lineups`,
+            { headers: { "x-rapidapi-host": API_HOST, "x-rapidapi-key": API_KEY } },
+          );
+          const raw = await res.json();
+          const hasHome = raw.home?.players?.length > 0;
+          const hasAway = raw.away?.players?.length > 0;
+          if (hasHome || hasAway) {
+            data = raw;
+            if (raw.confirmed) await cacheSet(`lineups_${event.id}`, raw);
           }
+        } catch (e) {
+          document.getElementById("homePitch").innerHTML =
+            '<div class="empty-form">Eroare la încărcarea formațiilor.</div>';
+          document.getElementById("awayPitch").innerHTML = "";
+          resolveLineupLoad();
+          return;
         }
 
         currentLineupData = data;
+        resolveLineupLoad();
 
         document.getElementById("lineupsSection").style.display = "grid";
-        const homeLogoUrl = `https://api.sofascore.app/api/v1/team/${event.homeTeam?.id}/image`;
-        const awayLogoUrl = `https://api.sofascore.app/api/v1/team/${event.awayTeam?.id}/image`;
-        const confirmed = data.confirmed === true;
-        renderPitch(
-          "homePitch",
-          data.home,
-          event.homeTeam?.name,
-          homeLogoUrl,
-          true,
-          confirmed,
-        );
-        renderPitch(
-          "awayPitch",
-          data.away,
-          event.awayTeam?.name,
-          awayLogoUrl,
-          false,
-          confirmed,
-        );
+
+        if (data !== null) {
+          // Lineup prezent (confirmat sau neconfirmat)
+          const confirmed = data.confirmed === true;
+          renderPitch("homePitch", data.home ?? null, event.homeTeam?.name, homeLogoUrl, true, confirmed);
+          renderPitch("awayPitch", data.away ?? null, event.awayTeam?.name, awayLogoUrl, false, confirmed);
+          return;
+        }
+
+        // ── Fallback: caută lineup din meciul anterior ──
+        const homeTeamId = event.homeTeam?.id;
+        const awayTeamId = event.awayTeam?.id;
+        const currentTs = event.startTimestamp;
+
+        const [homeEvents, awayEvents] = await Promise.all([
+          fetchLastMatches(homeTeamId),
+          fetchLastMatches(awayTeamId),
+        ]);
+
+        const homePast = homeEvents
+          .filter(e => (e.homeTeam?.id === homeTeamId || e.awayTeam?.id === homeTeamId) && e.status?.type === "finished" && e.startTimestamp < currentTs)
+          .sort((a, b) => b.startTimestamp - a.startTimestamp);
+
+        const awayPast = awayEvents
+          .filter(e => (e.homeTeam?.id === awayTeamId || e.awayTeam?.id === awayTeamId) && e.status?.type === "finished" && e.startTimestamp < currentTs)
+          .sort((a, b) => b.startTimestamp - a.startTimestamp);
+
+        let homeFallback = null;
+        for (const e of homePast.slice(0, 5)) {
+          const lu = await fetchLineup(e.id);
+          const side = e.homeTeam?.id === homeTeamId ? "home" : "away";
+          if (lu?.[side]?.players?.length > 0) { homeFallback = lu[side]; break; }
+          await delay(300);
+        }
+
+        let awayFallback = null;
+        for (const e of awayPast.slice(0, 5)) {
+          const lu = await fetchLineup(e.id);
+          const side = e.awayTeam?.id === awayTeamId ? "away" : "home";
+          if (lu?.[side]?.players?.length > 0) { awayFallback = lu[side]; break; }
+          await delay(300);
+        }
+
+        if (homeFallback || awayFallback)
+          currentLineupData = { home: homeFallback, away: awayFallback, confirmed: false };
+
+        renderPitch("homePitch", homeFallback, event.homeTeam?.name, homeLogoUrl, true, false, true);
+        renderPitch("awayPitch", awayFallback, event.awayTeam?.name, awayLogoUrl, false, false, true);
       }
 
-      async function fetchStandings(tournamentId, seasonId) {
-        const cacheKey = `standings_${tournamentId}_${seasonId}`;
+      async function fetchStandings(tournamentId, seasonId, type = 'total') {
+        const cacheKey = `standings_${tournamentId}_${seasonId}_${type}`;
         const cached = await cacheGet(cacheKey);
         if (cached) {
           if (Array.isArray(cached)) return cached;
-          const fromObj = cached.standings?.[0]?.rows;
-          if (Array.isArray(fromObj)) return fromObj;
         }
         try {
           const res = await fetch(
-            `https://${API_HOST}/api/v1/unique-tournament/${tournamentId}/season/${seasonId}/standings/total`,
+            `https://${API_HOST}/api/v1/unique-tournament/${tournamentId}/season/${seasonId}/standings/${type}`,
             {
               headers: {
                 "x-rapidapi-host": API_HOST,
@@ -1941,7 +1974,10 @@
             },
           );
           const data = await res.json();
-          const rows = data.standings?.[0]?.rows || [];
+          // Luăm grupul cu cele mai multe echipe (sezon regulat complet)
+          const groups = data.standings || [];
+          const best = groups.reduce((a, b) => (b.rows?.length ?? 0) > (a.rows?.length ?? 0) ? b : a, groups[0] ?? {});
+          const rows = best?.rows || [];
           if (rows.length) await cacheSet(cacheKey, rows);
           return rows;
         } catch {
@@ -2082,7 +2118,7 @@
         }
       }
 
-      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct, awayPosPct) {
+      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct, awayPosPct, leagueAvg) {
         return new Promise((resolve) =>
           setTimeout(() => {
             const N = 100000;
@@ -2163,11 +2199,27 @@
               if (ag < aDist.length) aDist[ag]++;
             }
 
-            // ── Dixon-Coles: boost scoruri mici ──
-            const DC = 1.07;
-            for (const key of ['0-0', '1-0', '0-1']) {
-              if (scores[key]) scores[key] *= DC;
+            // ── Blend Poisson ligă: calibrare distribuție total goluri ──
+            if (leagueAvg > 0) {
+              const ALPHA = 0.35;
+              const fact = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800];
+              const poissonP = (k) => k < fact.length ? Math.pow(leagueAvg, k) * Math.exp(-leagueAvg) / fact[k] : 0;
+              // distribuție total goluri din MC
+              const mcTotals = {};
+              for (const [key, cnt] of Object.entries(scores)) {
+                const tg = key.split('-').map(Number).reduce((a,b)=>a+b,0);
+                mcTotals[tg] = (mcTotals[tg] || 0) + cnt;
+              }
+              const mcN = Object.values(mcTotals).reduce((a,b)=>a+b,0);
+              for (const [key, cnt] of Object.entries(scores)) {
+                const tg = key.split('-').map(Number).reduce((a,b)=>a+b,0);
+                const mcProb = (mcTotals[tg] || 0) / mcN;
+                const leagueProb = poissonP(tg);
+                const blended = ALPHA * leagueProb + (1 - ALPHA) * mcProb;
+                scores[key] = cnt * (mcProb > 0 ? blended / mcProb : 1);
+              }
             }
+
             // Recompute toate statisticile din scores corectat
             let dcN = 0, dcHW = 0, dcD = 0, dcAW = 0, dcBtts = 0;
             const dcHDist = new Array(12).fill(0);
@@ -2211,6 +2263,7 @@
         lh2,
         la1,
         la2,
+        leagueAvg,
       ) {
         function toOdds(pct) {
           if (!pct || pct < 0.5) return "—";
@@ -2286,6 +2339,30 @@
       </div>
     </div>
 
+    ${leagueAvg > 0 ? (() => {
+      const λ = leagueAvg;
+      const poissonP = k => Math.pow(λ, k) * Math.exp(-λ) / [1,1,2,6][k];
+      const p0 = poissonP(0), p1 = poissonP(1), p2 = poissonP(2), p3 = poissonP(3);
+      const items = [
+        { label: '0 goluri',    pct: p0 * 100 },
+        { label: 'Over 0.5',   pct: (1 - p0) * 100 },
+        { label: 'Over 1.5',   pct: (1 - p0 - p1) * 100 },
+        { label: 'Over 2.5',   pct: (1 - p0 - p1 - p2) * 100 },
+        { label: 'Over 3.5',   pct: (1 - p0 - p1 - p2 - p3) * 100 },
+      ];
+      return `<div class="sim-block">
+        <div class="sim-block-title">Referință ligă · Medie ${λ.toFixed(2)} goluri/meci · Poisson</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;padding:4px 0">
+          ${items.map(it => `
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">${it.label}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--text)">${it.pct.toFixed(1)}%</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 6px">${toOdds(it.pct)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    })() : ''}
+
     <div class="sim-block">
       <div class="sim-block-title">Over / Under</div>
       <div class="sim-ou-cols">
@@ -2347,7 +2424,9 @@
       }
 
       let simLoaded = false;
-      let currentLineupData = null;
+      let currentLineupData = undefined;
+      let resolveLineupLoad;
+      const lineupLoadPromise = new Promise(r => { resolveLineupLoad = r; });
 
       async function loadSimulation() {
         if (simLoaded || !event) return;
@@ -2364,10 +2443,12 @@
         document.getElementById("simVerifySection").innerHTML =
           `<div id="simResultsSection" class="sim-results-section"><div class="sim-results-loading"><div class="spinner"></div><span>Se încarcă datele...</span></div></div>`;
 
-        const [homeEvents, awayEvents, standingsRows] = await Promise.all([
+        const [homeEvents, awayEvents, standingsRows, standingsHome, standingsAway] = await Promise.all([
           fetchLastMatches(homeTeamId),
           fetchLastMatches(awayTeamId),
-          fetchStandings(tournamentId, seasonId),
+          fetchStandings(tournamentId, seasonId, 'total'),
+          fetchStandings(tournamentId, seasonId, 'home'),
+          fetchStandings(tournamentId, seasonId, 'away'),
         ]);
 
         function extractPlayerIds(lineupSide) {
@@ -2410,6 +2491,29 @@
 
         // PPG map + maxDiff universal per campionat
         const ppgMap = buildPPGMap(standingsRows);
+
+        // Completăm ppgMap cu echipe lipsă (faze playoff, baraj etc.)
+        // calculând PPG direct din evenimentele disponibile
+        const allTournamentEvents = [...homeEvents, ...awayEvents].filter(
+          e => e.tournament?.uniqueTournament?.id === tournamentId && e.status?.type === 'finished'
+        );
+        const eventPPGData = {};
+        for (const e of allTournamentEvents) {
+          const pairs = [
+            [e.homeTeam, e.homeScore?.display ?? 0, e.awayScore?.display ?? 0],
+            [e.awayTeam, e.awayScore?.display ?? 0, e.homeScore?.display ?? 0],
+          ];
+          for (const [team, gs, gc] of pairs) {
+            if (!team?.id || ppgMap[team.id] != null) continue;
+            if (!eventPPGData[team.id]) eventPPGData[team.id] = { pts: 0, m: 0 };
+            eventPPGData[team.id].pts += gs > gc ? 3 : gs === gc ? 1 : 0;
+            eventPPGData[team.id].m++;
+          }
+        }
+        for (const [id, { pts, m }] of Object.entries(eventPPGData)) {
+          if (m > 0) ppgMap[id] = pts / m;
+        }
+
         const ppgValues = Object.values(ppgMap);
         const maxDiff = ppgValues.length
           ? Math.max(...ppgValues) - Math.min(...ppgValues)
@@ -2437,12 +2541,25 @@
           };
         }
 
+        const allMatches = homeFiltered.length + awayFiltered.length;
+        let matchIdx = 0;
+        const setLoadMsg = (teamName, isCached) => {
+          matchIdx++;
+          const src = isCached
+            ? `<span style="color:var(--win)">(cache)</span>`
+            : `<span style="color:var(--accent)">(fetch)</span>`;
+          document.getElementById("simResultsSection").innerHTML =
+            `<div class="sim-results-loading"><div class="spinner"></div><span>Se încarcă datele... ${matchIdx}/${allMatches} ${src}<br><small style="color:var(--muted)">${teamName}</small></span></div>`;
+        };
+
         const homeData = [];
         for (const e of homeFiltered) {
           const isHome = e.homeTeam?.id === homeTeamId;
           const side = isHome ? "home" : "away";
           const statsCached = await cacheGet(`stats_${e.id}`);
           const lineupCached = await cacheGet(`lineups_${e.id}`);
+          const isCached = !!(statsCached && lineupCached);
+          setLoadMsg(`${e.homeTeam?.name} vs ${e.awayTeam?.name}`, isCached);
           const [stats, pastLineup] = await Promise.all([
             statsCached
               ? Promise.resolve(statsCached)
@@ -2461,6 +2578,7 @@
             factor,
             side,
             lineupSim,
+            pastLineup,
           });
           if (!statsCached || !lineupCached) await delay(300);
         }
@@ -2471,6 +2589,8 @@
           const side = isAway ? "away" : "home";
           const statsCached = await cacheGet(`stats_${e.id}`);
           const lineupCached = await cacheGet(`lineups_${e.id}`);
+          const isCached = !!(statsCached && lineupCached);
+          setLoadMsg(`${e.homeTeam?.name} vs ${e.awayTeam?.name}`, isCached);
           const [stats, pastLineup] = await Promise.all([
             statsCached
               ? Promise.resolve(statsCached)
@@ -2489,6 +2609,7 @@
             factor,
             side,
             lineupSim,
+            pastLineup,
           });
           if (!statsCached || !lineupCached) await delay(300);
         }
@@ -2498,14 +2619,22 @@
         calcFormFactor(awayData, ppgActualOppAway, maxDiff);
 
         // ── Ajustare xG/xGA per meci pe baza formei contextuale ──
-        const XG_ADJ  = { weaker: { W: +7, D: -10, L: -20 }, similar: { W: +13, D: +5, L: -9 }, stronger: { W: +20, D: +15, L: -5 } };
-        const XGA_ADJ = { weaker: { W: -7, D: +10, L: +20 }, similar: { W: -13, D: -5, L: +9 }, stronger: { W: -20, D: -15, L: +5 } };
+        // Ajustări xG per teren + categorie adversar + rezultat (valori finale în %)
+        const XG_ADJ = {
+          home: { weaker: { W:+5,  D:-12, L:-28 }, similar: { W:+9,  D: -8, L:-13 }, stronger: { W:+14, D:+2,  L: -7 } },
+          away: { weaker: { W:+11, D:-13, L:-12 }, similar: { W:+20, D: +3, L: -5 }, stronger: { W:+30, D:+6,  L: -3 } },
+        };
+        const XGA_ADJ = {
+          home: { weaker: { W: -5, D:+7,  L:+28 }, similar: { W: -9, D:  0, L:+13 }, stronger: { W:-14, D: -6, L: +7 } },
+          away: { weaker: { W:-11, D:+13, L:+12 }, similar: { W:-20, D:-10, L: +5 }, stronger: { W:-30, D:-15, L: +3 } },
+        };
         function applyFormAdj(dataArr) {
           for (const d of dataArr) {
             if (d.formInfo) {
               const { category, result } = d.formInfo;
-              d.xGMult  = 1 + (XG_ADJ[category][result]  ?? 0) / 100;
-              d.xGAMult = 1 + (XGA_ADJ[category][result] ?? 0) / 100;
+              const terrain = d.side === 'away' ? 'away' : 'home';
+              d.xGMult  = 1 + (XG_ADJ[terrain][category][result]  ?? 0) / 100;
+              d.xGAMult = 1 + (XGA_ADJ[terrain][category][result] ?? 0) / 100;
             } else {
               d.xGMult = 1; d.xGAMult = 1;
             }
@@ -2621,10 +2750,24 @@
           const possession = (getVal(s, "ballPossession", side) ?? 50) * m;
           const xG   = (getVal(s, "expectedGoals", side) ?? 0) * m;
           const xGA  = (getVal(s, "expectedGoals", oppSide) ?? 0) / m;
-          const xG1H  = (getValByPeriod(s, "expectedGoals", side, "1ST") ?? 0) * m;
-          const xG2H  = (getValByPeriod(s, "expectedGoals", side, "2ND") ?? 0) * m;
-          const xGA1H = (getValByPeriod(s, "expectedGoals", oppSide, "1ST") ?? 0) / m;
-          const xGA2H = (getValByPeriod(s, "expectedGoals", oppSide, "2ND") ?? 0) / m;
+
+          // xG per repriză: din API dacă există, altfel proporțional cu suturi pe poartă
+          let xG1H  = (getValByPeriod(s, "expectedGoals", side,    "1ST") ?? 0) * m;
+          let xG2H  = (getValByPeriod(s, "expectedGoals", side,    "2ND") ?? 0) * m;
+          let xGA1H = (getValByPeriod(s, "expectedGoals", oppSide, "1ST") ?? 0) / m;
+          let xGA2H = (getValByPeriod(s, "expectedGoals", oppSide, "2ND") ?? 0) / m;
+          if (xG1H === 0 && xG2H === 0 && xG > 0) {
+            const s1 = getValByPeriod(s, "totalShotsOnGoal", side, "1ST") ?? 0;
+            const s2 = getValByPeriod(s, "totalShotsOnGoal", side, "2ND") ?? 0;
+            const r1 = (s1 + s2) > 0 ? s1 / (s1 + s2) : 0.47;
+            xG1H = xG * r1;  xG2H = xG * (1 - r1);
+          }
+          if (xGA1H === 0 && xGA2H === 0 && xGA > 0) {
+            const s1 = getValByPeriod(s, "totalShotsOnGoal", oppSide, "1ST") ?? 0;
+            const s2 = getValByPeriod(s, "totalShotsOnGoal", oppSide, "2ND") ?? 0;
+            const r1 = (s1 + s2) > 0 ? s1 / (s1 + s2) : 0.47;
+            xGA1H = xGA * r1;  xGA2H = xGA * (1 - r1);
+          }
 
           const ev = d.event;
           const rawScored =
@@ -2789,6 +2932,24 @@
         const awayAvgConceded = wAvg(awayData, "goalsConceded");
         const awayXGAFinal = awayAvgXGA * (1 - BLEND) + awayAvgConceded * BLEND;
 
+        // ── Factor avantaj/dezavantaj teren (home vs away standings) ──
+        const DAMP = 0.2;
+        function haFactor(rows_home, rows_away, teamId, metric) {
+          const rh = rows_home.find(r => r.team?.id === teamId);
+          const ra = rows_away.find(r => r.team?.id === teamId);
+          if (!rh || !ra || !rh.matches || !ra.matches) return 1;
+          const perH = (metric === 'for' ? rh.scoresFor : rh.scoresAgainst) / rh.matches;
+          const perA = (metric === 'for' ? ra.scoresFor : ra.scoresAgainst) / ra.matches;
+          if (!perA || !perH) return 1;
+          return 1 + (perH / perA - 1) * DAMP;
+        }
+        // Gazda joacă acasă: comparăm home vs away ale gazdei
+        const homeHAFactorXG  = haFactor(standingsHome, standingsAway, homeTeamId, 'for');
+        const homeHAFactorXGA = haFactor(standingsHome, standingsAway, homeTeamId, 'against');
+        // Oaspete joacă deplasare: comparăm away vs home ale oaspetelui
+        const awayHAFactorXG  = haFactor(standingsAway, standingsHome, awayTeamId, 'for');
+        const awayHAFactorXGA = haFactor(standingsAway, standingsHome, awayTeamId, 'against');
+
         document.getElementById("simVerifySection").insertAdjacentHTML(
           "beforeend",
           `
@@ -2880,10 +3041,10 @@
             </div>
           </div>`);
 
-        const homeXGFinalF  = homeXGFinal  * homeTotalMult;
-        const homeXGAFinalF = homeXGAFinal * (2 - homeTotalMult);
-        const awayXGFinalF  = awayXGFinal  * awayTotalMult;
-        const awayXGAFinalF = awayXGAFinal * (2 - awayTotalMult);
+        const homeXGFinalF  = homeXGFinal  * homeTotalMult * homeHAFactorXG;
+        const homeXGAFinalF = homeXGAFinal * (2 - homeTotalMult) * homeHAFactorXGA;
+        const awayXGFinalF  = awayXGFinal  * awayTotalMult * awayHAFactorXG;
+        const awayXGAFinalF = awayXGAFinal * (2 - awayTotalMult) * awayHAFactorXGA;
 
         const fatigueLabel = (f, mult) => {
           const pct = Math.round((mult - 1) * 100);
@@ -2909,30 +3070,31 @@
           </div>`);
 
         // ── Lambda per repriză: xG1H/2H propriu + xGA1H/2H adversar ──
-        const homeAvgXG1H  = wAvg(homeData, "xG1H");
-        const homeAvgXG2H  = wAvg(homeData, "xG2H");
-        const homeAvgXGA1H = wAvg(homeData, "xGA1H");
-        const homeAvgXGA2H = wAvg(homeData, "xGA2H");
-        const awayAvgXG1H  = wAvg(awayData, "xG1H");
-        const awayAvgXG2H  = wAvg(awayData, "xG2H");
-        const awayAvgXGA1H = wAvg(awayData, "xGA1H");
-        const awayAvgXGA2H = wAvg(awayData, "xGA2H");
+        // Fallback 50/50 dacă liga nu oferă statistici per repriză
+        const homeAvgXG1H  = wAvg(homeData, "xG1H")  || homeAvgXG  * 0.5;
+        const homeAvgXG2H  = wAvg(homeData, "xG2H")  || homeAvgXG  * 0.5;
+        const homeAvgXGA1H = wAvg(homeData, "xGA1H") || homeAvgXGA * 0.5;
+        const homeAvgXGA2H = wAvg(homeData, "xGA2H") || homeAvgXGA * 0.5;
+        const awayAvgXG1H  = wAvg(awayData, "xG1H")  || awayAvgXG  * 0.5;
+        const awayAvgXG2H  = wAvg(awayData, "xG2H")  || awayAvgXG  * 0.5;
+        const awayAvgXGA1H = wAvg(awayData, "xGA1H") || awayAvgXGA * 0.5;
+        const awayAvgXGA2H = wAvg(awayData, "xGA2H") || awayAvgXGA * 0.5;
 
-        // Factor blend proporțional din total (nu avem goluri pe repriză)
-        const homeXGBlend  = homeAvgXG  > 0 ? homeXGFinal  / homeAvgXG  : 1;
-        const awayXGBlend  = awayAvgXG  > 0 ? awayXGFinal  / awayAvgXG  : 1;
-        const homeXGABlend = homeAvgXGA > 0 ? homeXGAFinal / homeAvgXGA : 1;
-        const awayXGABlend = awayAvgXGA > 0 ? awayXGAFinal / awayAvgXGA : 1;
+        // Factor blend proporțional din total (include HA factor)
+        const homeXGBlend  = homeAvgXG  > 0 ? homeXGFinalF  / homeAvgXG  : 1;
+        const awayXGBlend  = awayAvgXG  > 0 ? awayXGFinalF  / awayAvgXG  : 1;
+        const homeXGABlend = homeAvgXGA > 0 ? homeXGAFinalF / homeAvgXGA : 1;
+        const awayXGABlend = awayAvgXGA > 0 ? awayXGAFinalF / awayAvgXGA : 1;
 
-        // Per repriză cu blend + fatigue + continuitate
-        const hXG1H  = homeAvgXG1H  * homeXGBlend  * homeTotalMult;
-        const hXG2H  = homeAvgXG2H  * homeXGBlend  * homeTotalMult;
-        const hXGA1H = homeAvgXGA1H * homeXGABlend * (2 - homeTotalMult);
-        const hXGA2H = homeAvgXGA2H * homeXGABlend * (2 - homeTotalMult);
-        const aXG1H  = awayAvgXG1H  * awayXGBlend  * awayTotalMult;
-        const aXG2H  = awayAvgXG2H  * awayXGBlend  * awayTotalMult;
-        const aXGA1H = awayAvgXGA1H * awayXGABlend * (2 - awayTotalMult);
-        const aXGA2H = awayAvgXGA2H * awayXGABlend * (2 - awayTotalMult);
+        // Per repriză cu blend + fatigue + continuitate + HA factor
+        const hXG1H  = homeAvgXG1H  * homeXGBlend;
+        const hXG2H  = homeAvgXG2H  * homeXGBlend;
+        const hXGA1H = homeAvgXGA1H * homeXGABlend;
+        const hXGA2H = homeAvgXGA2H * homeXGABlend;
+        const aXG1H  = awayAvgXG1H  * awayXGBlend;
+        const aXG2H  = awayAvgXG2H  * awayXGBlend;
+        const aXGA1H = awayAvgXGA1H * awayXGABlend;
+        const aXGA2H = awayAvgXGA2H * awayXGABlend;
 
         const lambdaHome1HFinal = (hXG1H + aXGA1H) / 2;
         const lambdaHome2HFinal = (hXG2H + aXGA2H) / 2;
@@ -2942,6 +3104,10 @@
         // ── Simulare Monte Carlo ──
         const lambdaHome = homeXGFinal;
         const lambdaAway = awayXGFinal;
+
+        const leagueTotalGoals = standingsRows.reduce((s, r) => s + (r.scoresFor ?? 0), 0);
+        const leagueTotalMatches = standingsRows.reduce((s, r) => s + (r.matches ?? 0), 0) / 2;
+        const leagueAvg = leagueTotalMatches > 0 ? leagueTotalGoals / leagueTotalMatches : 0;
 
         const simResultsSection = document.getElementById("simResultsSection");
         simResultsSection.innerHTML = `<div class="sim-results-loading"><div class="spinner"></div><span>Se rulează simularea (100.000 meciuri)...</span></div>`;
@@ -2953,6 +3119,7 @@
           lambdaAway2HFinal,
           homeAvgPos,
           awayAvgPos,
+          leagueAvg,
         );
         simResultsSection.innerHTML = renderSimResults(
           r,
@@ -2964,6 +3131,7 @@
           lambdaHome2HFinal,
           lambdaAway1HFinal,
           lambdaAway2HFinal,
+          leagueAvg,
         );
       }
 
