@@ -21,7 +21,8 @@
       "Bash(python -c \"import json,sys; events=json.load\\(sys.stdin\\).get\\(''''events'''',[]\\); finished=[e for e in events if e.get\\(''''status'''',{}\\).get\\(''''type''''\\)==''''finished'''']; print\\(json.dumps\\([{''''id'''':e[''''id''''],''''home'''':e[''''homeTeam''''][''''name''''],''''away'''':e[''''awayTeam''''][''''name'''']} for e in finished[:3]], indent=2\\)\\)\")",
       "Bash(node -e \"const d=require\\(''./cache/team_last_25856.json''\\);const f=d.events.filter\\(e=>e.status?.type===''finished''\\).slice\\(0,3\\);f.forEach\\(e=>console.log\\(e.id, e.homeTeam.name,''vs'',e.awayTeam.name\\)\\)\" C:/Users/yomih/Desktop/predictorAPI)",
       "Bash(node -e \"const d=require\\(''./cache/team_last_25856.json''\\); console.log\\(Object.keys\\(d\\)\\); console.log\\(JSON.stringify\\(d\\).substring\\(0,200\\)\\)\")",
-      "Bash(node -e \"const d=require\\(''./cache/team_last_25856.json''\\); const arr=Object.values\\(d\\); const f=arr.filter\\(e=>e.status?.type===''finished''\\).slice\\(0,3\\); f.forEach\\(e=>console.log\\(e.id, e.homeTeam.name,''vs'',e.awayTeam.name\\)\\)\")"
+      "Bash(node -e \"const d=require\\(''./cache/team_last_25856.json''\\); const arr=Object.values\\(d\\); const f=arr.filter\\(e=>e.status?.type===''finished''\\).slice\\(0,3\\); f.forEach\\(e=>console.log\\(e.id, e.homeTeam.name,''vs'',e.awayTeam.name\\)\\)\")",
+      "Bash(node -e ':*)"
     ]
   }
 }

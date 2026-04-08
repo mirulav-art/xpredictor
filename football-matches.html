@@ -589,17 +589,26 @@ async function cacheSet(key, value) {
 }
 
 const MAJOR_LEAGUE_IDS = new Set([
-  17,  // Premier League
-  18,  // Championship
-  35,  // Bundesliga
-  23,  // Serie A
-  34,  // Ligue 1
-  37,  // VriendenLoterij Eredivisie
-  8,   // LaLiga
-  152, // Romanian SuperLiga
-  52,  // Trendyol Süper Lig
-  38,  // Pro League
-  238, // Liga Portugal Betclic
+  7,   // Europe · UEFA Champions League
+  17,  // England · Premier League
+  18,  // England · Championship
+  35,  // Germany · Bundesliga
+  23,  // Italy · Serie A
+  34,  // France · Ligue 1
+  37,  // Netherlands · Eredivisie
+  8,   // Spain · LaLiga
+  152, // Romania · SuperLiga
+  52,  // Turkey · Trendyol Süper Lig
+  38,  // Belgium · Pro League
+  238, // Portugal · Liga Portugal Betclic
+  170, // Croatia · SuperSport HNL
+  20,  // Norway · Eliteserien
+  202, // Poland · Ekstraklasa
+  679, // Europe · UEFA Europa League
+  955, // Saudi Arabia · Pro League
+  247, // Bulgaria · Parva Liga
+  185, // Greece · Stoiximan Super League
+  210, // Serbia · Mozzart Bet Superliga
 ]);
 
 function isMajorLeague(event) {
@@ -776,8 +785,7 @@ function renderMatches() {
         <div class="league-header" onclick="toggleGroup(this)">
           <img class="league-flag" src="https://www.sofascore.com/static/images/flags/${group.flag}.png"
                onerror="this.style.display='none'" alt="">
-          <span class="league-name">${group.name}</span>
-          <span class="league-category">${group.category}</span>
+          <span class="league-name">${group.category ? group.category + ' · ' : ''}${group.name}</span>
           <span class="league-count">${group.events.length}</span>
           <span class="chevron">▼</span>
         </div>
