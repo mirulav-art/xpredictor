@@ -36,6 +36,7 @@
         color: var(--text);
         font-family: "DM Sans", sans-serif;
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
       /* HEADER */
@@ -880,29 +881,33 @@
         margin-bottom: 12px;
       }
       .sim-block-title {
-        font-family: "DM Mono", monospace;
-        font-size: 10px;
+        font-family: "DM Sans", sans-serif;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--muted);
-        margin-bottom: 14px;
+        letter-spacing: 1.2px;
+        color: var(--text);
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
       }
 
       .sim-1x2 {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-        gap: 10px;
+        gap: 8px;
       }
       .sim-1x2-item {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 5px;
-        padding: 14px 8px;
+        gap: 4px;
+        padding: 10px 6px;
         border-radius: 8px;
         border: 1px solid var(--border);
         background: var(--surface2);
+        min-width: 0;
+        overflow: hidden;
       }
       .sim-1x2-best {
         background: rgba(37, 99, 235, 0.08);
@@ -910,13 +915,13 @@
       }
       .sim-1x2-label {
         font-family: "Bebas Neue", sans-serif;
-        font-size: 26px;
+        font-size: 20px;
         color: var(--text);
         line-height: 1;
       }
       .sim-1x2-pct {
         font-family: "DM Mono", monospace;
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--accent);
       }
@@ -945,13 +950,16 @@
 
       .sim-1x2-odds {
         font-family: "DM Mono", monospace;
-        font-size: 14px;
-        font-weight: 700;
+        font-size: 11px;
+        font-weight: 600;
         color: var(--text);
-        font-weight: 500;
+        background: var(--surface);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
       }
 
-      .sim-ou-cols {
+.sim-ou-cols {
         display: grid;
         grid-template-columns: 36px 1fr 1fr 1fr;
         gap: 0;
@@ -1157,58 +1165,91 @@
       }
 
       /* GOAL DISTRIBUTION */
-      .goal-dist-block-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+      .gdist-legend {
+        display: flex;
         gap: 20px;
-        margin-top: 4px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
       }
-      .goal-dist-block-title {
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--muted);
-        margin-bottom: 8px;
-      }
-      .goal-dist-row {
-        display: grid;
-        grid-template-columns: 40px 1fr 28px;
+      .gdist-legend-item {
+        display: flex;
         align-items: center;
         gap: 6px;
-        margin-bottom: 5px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
       }
-      .goal-dist-interval {
+      .gdist-legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .gdist-legend-dot.home { background: var(--accent); }
+      .gdist-legend-dot.away { background: #f97316; }
+      .gdist-interval-row {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .gdist-interval-row:last-child { margin-bottom: 0; }
+      .gdist-label {
         font-family: "DM Mono", monospace;
         font-size: 10px;
         color: var(--muted);
+        text-align: right;
+        white-space: nowrap;
       }
-      .goal-dist-bar-track {
-        height: 6px;
+      .gdist-bars { display: flex; flex-direction: column; gap: 4px; }
+      .gdist-bar-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .gdist-bar-track {
+        flex: 1;
+        height: 8px;
         background: var(--border);
-        border-radius: 3px;
+        border-radius: 4px;
         overflow: hidden;
+        min-width: 0;
       }
-      .goal-dist-bar-fill {
+      .gdist-bar-fill-home {
         height: 100%;
-        border-radius: 3px;
+        border-radius: 4px;
         background: var(--accent);
-        opacity: 0.5;
+        opacity: 0.55;
+        transition: width 0.4s ease;
       }
-      .goal-dist-bar-fill.gdmax {
-        background: var(--win);
-        opacity: 1;
+      .gdist-bar-fill-home.gdist-peak { opacity: 1; }
+      .gdist-bar-fill-away {
+        height: 100%;
+        border-radius: 4px;
+        background: #f97316;
+        opacity: 0.55;
+        transition: width 0.4s ease;
       }
-      .goal-dist-bar-fill.gd-conceded {
-        background: var(--loss);
+      .gdist-bar-fill-away.gdist-peak { opacity: 1; }
+      .gdist-bar-pct {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        color: var(--muted);
+        min-width: 28px;
+        text-align: right;
+        flex-shrink: 0;
       }
-      .goal-dist-bar-fill.gd-overlap {
-        background: var(--accent);
-        opacity: 0.9;
+      .gdist-bar-pct.gdist-peak {
+        color: var(--text);
+        font-weight: 700;
       }
-      .goal-dist-bar-fill.gd-overlap.gdmax {
-        background: var(--win);
-        opacity: 1;
+      .goal-dist-na {
+        font-size: 12px;
+        color: var(--muted);
+        text-align: center;
+        padding: 12px 0;
       }
       .goal-dist-pct {
         font-family: "DM Mono", monospace;
@@ -1219,6 +1260,7 @@
       .goal-dist-pct.gdmax {
         color: var(--win);
         font-weight: 700;
+        /* pastrat pentru compatibilitate */
       }
       .goal-dist-na {
         font-size: 11px;
@@ -1231,6 +1273,7 @@
         padding: 24px 32px 32px;
         max-width: 900px;
         margin: 0 auto;
+        overflow: hidden;
       }
 
       .sim-results-title {
@@ -1867,7 +1910,8 @@
             },
           );
           const data = await res.json();
-          if ((data.home || data.away) && data.confirmed)
+          // Meciuri trecute: cachează indiferent de confirmed — lineup nu se mai schimbă
+          if (data.home || data.away)
             await cacheSet(cacheKey, data);
           return data.home || data.away ? data : null;
         } catch {
@@ -2028,8 +2072,16 @@
         // ── încearcă lineup-ul meciului curent ──
         let data = null;
 
+        // Cheia de cache depinde de starea meciului:
+        // - terminat → lineups_final_ (permanent, nu se mai schimbă)
+        // - neînceput/în curs → lineups_pending_ (TTL 30 min)
+        const isFinished = event.status?.type === 'finished';
+        const lineupCacheKey = isFinished
+          ? `lineups_final_${event.id}`
+          : `lineups_pending_${event.id}`;
+
         // 1) verifică cache-ul mai întâi
-        const cachedLineup = await cacheGet(`lineups_${event.id}`);
+        const cachedLineup = await cacheGet(lineupCacheKey);
         if (cachedLineup?.home?.players?.length > 0 || cachedLineup?.away?.players?.length > 0) {
           data = cachedLineup;
         } else {
@@ -2044,7 +2096,7 @@
             const hasAway = raw.away?.players?.length > 0;
             if (hasHome || hasAway) {
               data = raw;
-              if (raw.confirmed) await cacheSet(`lineups_${event.id}`, raw);
+              await cacheSet(lineupCacheKey, raw);
             }
           } catch (e) {
             document.getElementById("homePitch").innerHTML =
@@ -2260,8 +2312,8 @@
             },
           );
           const data = await res.json();
-          // Cache doar dacă lineup-ul este confirmat (meciuri terminate)
-          if ((data.home || data.away) && data.confirmed)
+          // Cachează dacă există date — TTL de 6h în server.js asigură refresh periodic
+          if (data.home || data.away)
             await cacheSet(cacheKey, data);
           return data.home || data.away ? data : null;
         } catch {
@@ -2327,6 +2379,7 @@
           setTimeout(() => {
             const N = 100000;
             const scores = {};
+            const htft = {};
             const homePosBase1H = (homePosPct1H + awayPosPct1H) > 0 ? homePosPct1H / (homePosPct1H + awayPosPct1H) : 0.5;
             const homePosBase2H = (homePosPct2H + awayPosPct2H) > 0 ? homePosPct2H / (homePosPct2H + awayPosPct2H) : 0.5;
 
@@ -2334,7 +2387,7 @@
               const dur1H = 45 + Math.floor(Math.random() * 5); // 45-49
               const dur2H = 45 + Math.floor(Math.random() * 8); // 45-52
               const dur = dur1H + dur2H;
-              let hg = 0, ag = 0;
+              let hg = 0, ag = 0, htHg = 0, htAg = 0;
               let posProb = homePosBase1H;
 
               // Lambda per minut de posesie (normalizat: lambda / (dur * posesie_asteptata))
@@ -2345,7 +2398,7 @@
 
               for (let m = 0; m < dur; m++) {
                 const isFirst = m < dur1H;
-                if (m === dur1H) posProb = homePosBase2H;
+                if (m === dur1H) { htHg = hg; htAg = ag; posProb = homePosBase2H; }
 
                 // Fluctuație posesie la fiecare 3 minute
                 if (m % 3 === 0) {
@@ -2409,11 +2462,15 @@
 
               const key = `${hg}-${ag}`;
               scores[key] = (scores[key] || 0) + 1;
+              const htRes = htHg > htAg ? '1' : htHg === htAg ? 'X' : '2';
+              const ftRes = hg   > ag   ? '1' : hg   === ag   ? 'X' : '2';
+              const htftKey = `${htRes}/${ftRes}`;
+              htft[htftKey] = (htft[htftKey] || 0) + 1;
             }
 
             // ── Blend Poisson ligă: calibrare distribuție total goluri ──
             if (leagueAvg > 0) {
-              const ALPHA = 0.35;
+              const ALPHA = 0.40;
               const fact = [1,1,2,6,24,120,720,5040,40320,362880,3628800,39916800,479001600,6227020800];
               const poissonP = (k) => k < fact.length ? Math.pow(leagueAvg, k) * Math.exp(-leagueAvg) / fact[k] : 0;
               // distribuție total goluri din MC
@@ -2450,6 +2507,10 @@
               if (tg < dcTDist.length) dcTDist[tg] += cnt;
             }
 
+            const htftPcts = {};
+            for (const k of ['1/1','1/X','1/2','X/1','X/X','X/2','2/1','2/X','2/2'])
+              htftPcts[k] = ((htft[k] || 0) / N) * 100;
+
             resolve({
               N: dcN,
               homeWinPct: (dcHW / dcN) * 100,
@@ -2460,6 +2521,7 @@
               totalDist: dcTDist.map((c) => (c / dcN) * 100),
               hDist: dcHDist.map((c) => (c / dcN) * 100),
               aDist: dcADist.map((c) => (c / dcN) * 100),
+              htftPcts,
             });
           }, 0),
         );
@@ -2560,24 +2622,50 @@
     <div class="sim-block">
       <div class="sim-block-title">Șansă dublă</div>
       <div class="sim-1x2">
-        ${[
-          { l: "1X", n: `${homeName} sau Egal`, p: r.homeWinPct + r.drawPct },
-          { l: "12", n: `${homeName} sau ${awayName}`, p: r.homeWinPct + r.awayWinPct },
-          { l: "X2", n: `Egal sau ${awayName}`, p: r.drawPct + r.awayWinPct },
-        ]
-          .map(
-            (x) => `
-          <div class="sim-1x2-item">
+        ${(() => {
+          const items = [
+            { l: "1X", n: `${homeName} sau Egal`, p: r.homeWinPct + r.drawPct },
+            { l: "12", n: `${homeName} sau ${awayName}`, p: r.homeWinPct + r.awayWinPct },
+            { l: "X2", n: `Egal sau ${awayName}`, p: r.drawPct + r.awayWinPct },
+          ];
+          const maxDC = Math.max(...items.map(x => x.p));
+          return items.map(x => `
+          <div class="sim-1x2-item${x.p === maxDC ? ' sim-1x2-best' : ''}">
             <div class="sim-1x2-label">${x.l}</div>
             <div class="sim-1x2-pct">${x.p.toFixed(1)}%</div>
             <div class="sim-1x2-odds">${toOdds(x.p)}</div>
             <div class="sim-1x2-bar-track"><div class="sim-1x2-bar-fill" style="width:${x.p.toFixed(1)}%"></div></div>
             <div class="sim-1x2-name">${x.n}</div>
-          </div>`,
-          )
-          .join("")}
+          </div>`).join('');
+        })()}
       </div>
     </div>
+
+    ${(() => {
+      const p = r.htftPcts;
+      // P(rezultat la pauza SAU la final) = uniunea evenimentelor
+      const p1 = p['1/1']+p['1/X']+p['1/2']+p['X/1']+p['2/1'];
+      const pX = p['X/X']+p['X/1']+p['X/2']+p['1/X']+p['2/X'];
+      const p2 = p['2/2']+p['2/1']+p['2/X']+p['1/2']+p['X/2'];
+      const maxPSF = Math.max(p1, pX, p2);
+      return `<div class="sim-block">
+        <div class="sim-block-title">Pauză sau Final</div>
+        <div class="sim-1x2">
+          ${[
+            { l: '1', n: homeName, p: p1 },
+            { l: 'X', n: 'Egal',   p: pX },
+            { l: '2', n: awayName, p: p2 },
+          ].map(x => `
+          <div class="sim-1x2-item${x.p === maxPSF ? ' sim-1x2-best' : ''}">
+            <div class="sim-1x2-label">${x.l}</div>
+            <div class="sim-1x2-pct">${x.p.toFixed(1)}%</div>
+            <div class="sim-1x2-odds">${toOdds(x.p)}</div>
+            <div class="sim-1x2-bar-track"><div class="sim-1x2-bar-fill" style="width:${Math.min(x.p,100).toFixed(1)}%"></div></div>
+            <div class="sim-1x2-name">${x.n}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    })()}
 
     ${leagueAvg > 0 ? (() => {
       const λ = leagueAvg;
@@ -2673,19 +2761,6 @@
         return periods.map(p => (p[key] || 0) / total * 100);
       }
 
-      // Randează un set de bare (scored sau conceded) cu o culoare dată
-      function barsHtml(pcts, colorClass) {
-        if (!pcts) return `<div class="goal-dist-na">Date indisponibile</div>`;
-        const maxP = Math.max(...pcts);
-        return pcts.map((p, i) => {
-          const isMax = p === maxP;
-          return `<div class="goal-dist-row">
-            <span class="goal-dist-interval">${intervals[i]}</span>
-            <div class="goal-dist-bar-track"><div class="goal-dist-bar-fill ${isMax ? 'gdmax' : ''} ${colorClass}" style="width:${Math.round(p / maxP * 100)}%"></div></div>
-            <span class="goal-dist-pct ${isMax ? 'gdmax' : ''}">${Math.round(p)}%</span>
-          </div>`;
-        }).join('');
-      }
 
       const homePeriods = homeGoalDist?.goalDistributions?.find(d => d.type === 'home')?.periods;
       const awayPeriods = awayGoalDist?.goalDistributions?.find(d => d.type === 'away')?.periods;
@@ -2706,42 +2781,47 @@
       const homeOverlap = overlapPercents(homeScoredW, awayConcededW);
       const awayOverlap = overlapPercents(awayScoredW, homeConcededW);
 
+      const maxHome = homeOverlap ? Math.max(...homeOverlap) : 1;
+      const maxAway = awayOverlap ? Math.max(...awayOverlap) : 1;
+
       return `
-        <div class="sim-block-row">
-          <div class="sim-block">
-            <div class="sim-block-title">${homeName}</div>
-            <div class="goal-dist-block-title">Marchează</div>
-            ${barsHtml(homeScored, '')}
-            <div class="goal-dist-block-title" style="margin-top:10px">Primește</div>
-            ${barsHtml(homeConceded, 'gd-conceded')}
-          </div>
-          <div class="sim-block">
-            <div class="sim-block-title">${awayName}</div>
-            <div class="goal-dist-block-title">Marchează</div>
-            ${barsHtml(awayScored, '')}
-            <div class="goal-dist-block-title" style="margin-top:10px">Primește</div>
-            ${barsHtml(awayConceded, 'gd-conceded')}
-          </div>
-        </div>
         <div class="sim-block">
-          <div class="sim-block-title">Suprapunere · când se marchează în meci</div>
-          ${(() => {
-            if (!homeOverlap || !awayOverlap) return `<div class="goal-dist-na">Date indisponibile</div>`;
-            // Combinam probabilitatile celor doua echipe per interval
-            const combined = homeOverlap.map((h, i) => h + awayOverlap[i]);
-            const total = combined.reduce((s, v) => s + v, 0);
-            const maxC  = Math.max(...combined);
-            return intervals.map((label, i) => {
-              const pct   = Math.round(combined[i] / total * 100);
-              const barW  = Math.round(combined[i] / maxC * 100);
-              const isMax = combined[i] === maxC;
-              return `<div class="goal-dist-row">
-                <span class="goal-dist-interval">${label}</span>
-                <div class="goal-dist-bar-track"><div class="goal-dist-bar-fill gd-overlap ${isMax ? 'gdmax' : ''}" style="width:${barW}%"></div></div>
-                <span class="goal-dist-pct ${isMax ? 'gdmax' : ''}">${pct}%</span>
-              </div>`;
-            }).join('');
-          })()}
+          <div class="sim-block-title">Când se marchează · distribuție goluri per interval</div>
+          ${(!homeOverlap && !awayOverlap)
+            ? `<div class="goal-dist-na">Date indisponibile</div>`
+            : `
+          <div class="gdist-legend">
+            <div class="gdist-legend-item">
+              <span class="gdist-legend-dot home"></span>
+              <span>${homeName}</span>
+            </div>
+            <div class="gdist-legend-item">
+              <span class="gdist-legend-dot away"></span>
+              <span>${awayName}</span>
+            </div>
+          </div>
+          ${intervals.map((label, i) => {
+            const hPct  = homeOverlap ? Math.round(homeOverlap[i]) : null;
+            const aPct  = awayOverlap ? Math.round(awayOverlap[i]) : null;
+            const hBarW = homeOverlap ? Math.round(homeOverlap[i] / maxHome * 100) : 0;
+            const aBarW = awayOverlap ? Math.round(awayOverlap[i] / maxAway * 100) : 0;
+            const isPeakH = homeOverlap && homeOverlap[i] === maxHome;
+            const isPeakA = awayOverlap && awayOverlap[i] === maxAway;
+            return `<div class="gdist-interval-row">
+              <span class="gdist-label">${label}</span>
+              <div class="gdist-bars">
+                ${hPct !== null ? `<div class="gdist-bar-wrap">
+                  <div class="gdist-bar-track"><div class="gdist-bar-fill-home ${isPeakH ? 'gdist-peak' : ''}" style="width:${hBarW}%"></div></div>
+                  <span class="gdist-bar-pct ${isPeakH ? 'gdist-peak' : ''}">${hPct}%</span>
+                </div>` : ''}
+                ${aPct !== null ? `<div class="gdist-bar-wrap">
+                  <div class="gdist-bar-track"><div class="gdist-bar-fill-away ${isPeakA ? 'gdist-peak' : ''}" style="width:${aBarW}%"></div></div>
+                  <span class="gdist-bar-pct ${isPeakA ? 'gdist-peak' : ''}">${aPct}%</span>
+                </div>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+          `}
         </div>`;
     })()}`;
       }

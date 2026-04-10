@@ -19,11 +19,29 @@ app.get("/", (req, res) => {
 
 // TTL-uri per prefix (ms)
 const CACHE_TTL = {
-  "matches_":   30 * 60 * 1000,        // 30 minute — lista de meciuri
-  "team_last_": 24 * 60 * 60 * 1000,   // 24 ore — ultimele meciuri ale echipei
-  "goal_dist_": 24 * 60 * 60 * 1000,   // 24 ore — distributia golurilor
-  "seasons_":    7 * 24 * 60 * 60 * 1000, // 7 zile — sezoane (rar se schimba)
+  "matches_":   30 * 60 * 1000,              // 30 minute — lista de meciuri
+  "team_last_": 24 * 60 * 60 * 1000,         // 24 ore — ultimele meciuri ale echipei
+  "goal_dist_": 24 * 60 * 60 * 1000,         // 24 ore — distributia golurilor
+  "seasons_":    7 * 24 * 60 * 60 * 1000,    // 7 zile — sezoane (rar se schimba)
+  "lineups_final_":   30 * 24 * 60 * 60 * 1000, // 30 zile — lineup meci terminat (nu se mai schimbă)
+  "lineups_pending_": 30 * 60 * 1000,            // 30 minute — lineup meci neînceput/în curs
+  "lineups_":    30 * 24 * 60 * 60 * 1000,   // 30 zile — lineup meciuri trecute (fetchEventLineup/fetchLineup)
+  "h2h_":       30 * 24 * 60 * 60 * 1000,    // 30 zile — H2H (meciuri trecute, nu se schimba)
+  "stats_":     30 * 24 * 60 * 60 * 1000,    // 30 zile — statistici meci finalizat
+  "standings_": 25 * 60 * 60 * 1000,         // 25 ore — clasament (cheia contine data, cleanup zilnic)
 };
+
+// Cleanup fisiere standings vechi la pornirea serverului
+// (cheia contine data, deci fisierele din zilele trecute nu mai sunt cerute niciodata)
+try {
+  const maxAge = 2 * 24 * 60 * 60 * 1000;
+  fs.readdirSync(CACHE_DIR)
+    .filter(f => f.startsWith("standings_") && f.endsWith(".json"))
+    .forEach(f => {
+      const file = path.join(CACHE_DIR, f);
+      if (Date.now() - fs.statSync(file).mtimeMs > maxAge) fs.unlinkSync(file);
+    });
+} catch(e) {}
 
 // GET /cache/:key - citeste din cache
 app.get("/cache/:key", (req, res) => {
