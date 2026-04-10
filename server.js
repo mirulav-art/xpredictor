@@ -17,14 +17,22 @@ app.get("/", (req, res) => {
   res.redirect("/football-matches.html");
 });
 
+// TTL-uri per prefix (ms)
+const CACHE_TTL = {
+  "matches_":   30 * 60 * 1000,        // 30 minute — lista de meciuri
+  "team_last_": 24 * 60 * 60 * 1000,   // 24 ore — ultimele meciuri ale echipei
+  "goal_dist_": 24 * 60 * 60 * 1000,   // 24 ore — distributia golurilor
+  "seasons_":    7 * 24 * 60 * 60 * 1000, // 7 zile — sezoane (rar se schimba)
+};
+
 // GET /cache/:key - citeste din cache
 app.get("/cache/:key", (req, res) => {
   const file = path.join(CACHE_DIR, req.params.key + ".json");
   if (!fs.existsSync(file)) return res.status(404).json({ error: "not found" });
-  // TTL 30 minute pentru cache-ul listei de meciuri
-  if (req.params.key.startsWith("matches_")) {
+  const ttl = Object.entries(CACHE_TTL).find(([prefix]) => req.params.key.startsWith(prefix))?.[1];
+  if (ttl) {
     const age = Date.now() - fs.statSync(file).mtimeMs;
-    if (age > 30 * 60 * 1000) return res.status(404).json({ error: "expired" });
+    if (age > ttl) return res.status(404).json({ error: "expired" });
   }
   res.sendFile(file);
 });
