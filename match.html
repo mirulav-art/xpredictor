@@ -1156,6 +1156,76 @@
         text-align: right;
       }
 
+      /* GOAL DISTRIBUTION */
+      .goal-dist-block-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 4px;
+      }
+      .goal-dist-block-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .goal-dist-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 28px;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 5px;
+      }
+      .goal-dist-interval {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .goal-dist-bar-track {
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .goal-dist-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--accent);
+        opacity: 0.5;
+      }
+      .goal-dist-bar-fill.gdmax {
+        background: var(--win);
+        opacity: 1;
+      }
+      .goal-dist-bar-fill.gd-conceded {
+        background: var(--loss);
+      }
+      .goal-dist-bar-fill.gd-overlap {
+        background: var(--accent);
+        opacity: 0.9;
+      }
+      .goal-dist-bar-fill.gd-overlap.gdmax {
+        background: var(--win);
+        opacity: 1;
+      }
+      .goal-dist-pct {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        color: var(--muted);
+        text-align: right;
+      }
+      .goal-dist-pct.gdmax {
+        color: var(--win);
+        font-weight: 700;
+      }
+      .goal-dist-na {
+        font-size: 11px;
+        color: var(--muted);
+        font-style: italic;
+      }
+
       /* SIMULATION RESULTS */
       .sim-results-section {
         padding: 24px 32px 32px;
@@ -1417,7 +1487,7 @@
         <div class="form-section" id="homeForm">
           <div class="form-title">
             <span class="form-title-text">Acasă</span>
-            <span class="form-subtitle">ultimele 5</span>
+            <span class="form-subtitle">ultimele 6</span>
           </div>
           <div class="loading-form">
             <div class="spinner"></div>
@@ -1427,7 +1497,7 @@
         <div class="form-section" id="awayForm">
           <div class="form-title">
             <span class="form-title-text">Deplasare</span>
-            <span class="form-subtitle">ultimele 5</span>
+            <span class="form-subtitle">ultimele 6</span>
           </div>
           <div class="loading-form">
             <div class="spinner"></div>
@@ -1561,18 +1631,24 @@
         const cached = await cacheGet(cacheKey);
         if (cached) return cached;
 
-        const res = await fetch(
-          `https://${API_HOST}/api/v1/team/${teamId}/events/all/last/0`,
-          {
+        const fetchPage = (page) =>
+          fetch(`https://${API_HOST}/api/v1/team/${teamId}/events/all/last/${page}`, {
             headers: {
               "x-rapidapi-host": API_HOST,
               "x-rapidapi-key": API_KEY,
             },
-          },
-        );
-        const data = await res.json();
-        await cacheSet(cacheKey, data.events || []);
-        return data.events || [];
+          }).then((r) => r.json()).then((d) => d.events || []);
+
+        const [page0, page1] = await Promise.all([fetchPage(0), fetchPage(1)]);
+        const seen = new Set();
+        const merged = [...page0, ...page1].filter((e) => {
+          if (seen.has(e.id)) return false;
+          seen.add(e.id);
+          return true;
+        });
+        merged.sort((a, b) => b.startTimestamp - a.startTimestamp);
+        await cacheSet(cacheKey, merged);
+        return merged;
       }
 
       function getResult(e, teamId, isHome) {
@@ -1600,7 +1676,7 @@
       <div class="form-title">
         <img src="${teamLogoUrl}" onerror="this.src=''" alt="">
         <span class="form-title-text">${teamName}</span>
-        <span class="form-subtitle">${label} · ultimele 5</span>
+        <span class="form-subtitle">${label} · ultimele 6</span>
       </div>
       <div class="empty-form">Nu există date disponibile.</div>`;
           return;
@@ -1635,7 +1711,7 @@
     <div class="form-title">
       <img src="${teamLogoUrl}" onerror="this.src=''" alt="">
       <span class="form-title-text">${teamName}</span>
-      <span class="form-subtitle">${label} · ultimele 5</span>
+      <span class="form-subtitle">${label} · ultimele 6</span>
     </div>
     ${rows}`;
       }
@@ -1724,24 +1800,24 @@
         const homeFiltered = homeEvents
           .filter(
             (e) =>
-              e.homeTeam?.id === homeTeamId &&
+              (e.homeTeam?.id === homeTeamId || e.awayTeam?.id === homeTeamId) &&
               e.tournament?.uniqueTournament?.id === tournamentId &&
               e.status?.type === "finished" &&
               e.startTimestamp < currentTs,
           )
           .sort((a, b) => b.startTimestamp - a.startTimestamp)
-          .slice(0, 5);
+          .slice(0, 6);
 
         const awayFiltered = awayEvents
           .filter(
             (e) =>
-              e.awayTeam?.id === awayTeamId &&
+              (e.homeTeam?.id === awayTeamId || e.awayTeam?.id === awayTeamId) &&
               e.tournament?.uniqueTournament?.id === tournamentId &&
               e.status?.type === "finished" &&
               e.startTimestamp < currentTs,
           )
           .sort((a, b) => b.startTimestamp - a.startTimestamp)
-          .slice(0, 5);
+          .slice(0, 6);
 
         renderFormSection(
           "homeForm",
@@ -2011,7 +2087,7 @@
           .sort((a, b) => b.startTimestamp - a.startTimestamp);
 
         let homeFallback = null;
-        for (const e of homePast.slice(0, 5)) {
+        for (const e of homePast.slice(0, 6)) {
           const lu = await fetchLineup(e.id);
           const side = e.homeTeam?.id === homeTeamId ? "home" : "away";
           if (lu?.[side]?.players?.length > 0) { homeFallback = lu[side]; break; }
@@ -2019,7 +2095,7 @@
         }
 
         let awayFallback = null;
-        for (const e of awayPast.slice(0, 5)) {
+        for (const e of awayPast.slice(0, 6)) {
           const lu = await fetchLineup(e.id);
           const side = e.awayTeam?.id === awayTeamId ? "away" : "home";
           if (lu?.[side]?.players?.length > 0) { awayFallback = lu[side]; break; }
@@ -2098,7 +2174,7 @@
         const past = allEvents
           .filter(e => e.startTimestamp < currentTs && e.status?.type === 'finished')
           .sort((a, b) => b.startTimestamp - a.startTimestamp)
-          .slice(0, 5);
+          .slice(0, 6);
         if (past.length < 2) return { avgRest: 7, matchCount: past.length };
         const newest = past[0].startTimestamp;
         const oldest = past[past.length - 1].startTimestamp;
@@ -2193,83 +2269,146 @@
         }
       }
 
-      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct1H, awayPosPct1H, homePosPct2H, awayPosPct2H, leagueAvg) {
+      async function fetchGoalDistributions(teamId, tournamentId, seasonId) {
+        const cacheKey = `goal_dist_${teamId}_${tournamentId}_${seasonId}`;
+        const cached = await cacheGet(cacheKey);
+        if (cached) return cached;
+        try {
+          const res = await fetch(
+            `https://${API_HOST}/api/v1/team/${teamId}/unique-tournament/${tournamentId}/season/${seasonId}/goal-distributions`,
+            { headers: { "x-rapidapi-host": API_HOST, "x-rapidapi-key": API_KEY } }
+          );
+          const data = await res.json();
+          if (data?.goalDistributions) await cacheSet(cacheKey, data);
+          return data?.goalDistributions ? data : null;
+        } catch { return null; }
+      }
+
+      function calcGoalDistWeights(homeDist, awayDist) {
+        // Distributie medie din fotbal real — fallback când lipsesc datele unei echipe
+        // [0-15, 16-30, 31-45, 46-60, 61-75, 76-90]
+        const FALLBACK = [13, 14, 16, 17, 18, 22];
+        const FALLBACK_TOTAL = FALLBACK.reduce((s, v) => s + v, 0);
+        const fallbackPeriods = FALLBACK.map(v => ({ scoredGoals: v, concededGoals: v }));
+
+        const homeData = homeDist?.goalDistributions?.find(d => d.type === 'home');
+        const awayData = awayDist?.goalDistributions?.find(d => d.type === 'away');
+
+        const hp = homeData?.periods ?? fallbackPeriods;
+        const ap = awayData?.periods ?? fallbackPeriods;
+        // Calculam totalurile din perioade (mai sigur decat campul .scoredGoals care poate lipsi)
+        const hScored   = hp.reduce((s, p) => s + (p.scoredGoals   ?? 0), 0) || FALLBACK_TOTAL;
+        const hConceded = hp.reduce((s, p) => s + (p.concededGoals ?? 0), 0) || FALLBACK_TOTAL;
+        const aScored   = ap.reduce((s, p) => s + (p.scoredGoals   ?? 0), 0) || FALLBACK_TOTAL;
+        const aConceded = ap.reduce((s, p) => s + (p.concededGoals ?? 0), 0) || FALLBACK_TOTAL;
+
+        // Normalizeaza la medie 1.0, cu floor 0.25 pentru intervale rare
+        // Apoi blend cu uniforma (1.0) pentru a limita amplitudinea boost/nerf
+        const DIST_INFLUENCE = 0.7;
+        const normalize = (arr) => {
+          const avg = arr.reduce((s, v) => s + v, 0) / arr.length;
+          if (avg === 0) return arr.map(() => 1);
+          const normed = arr.map(v => Math.max(v / avg, 0.25));
+          const avg2 = normed.reduce((s, v) => s + v, 0) / normed.length;
+          return normed.map(v => (v / avg2) * DIST_INFLUENCE + 1.0 * (1 - DIST_INFLUENCE));
+        };
+
+        // 4 distributii independente (fiecare normalizata separat)
+        return {
+          homeScoredW:   normalize(hp.map(p => (p.scoredGoals   ?? 0) / hScored)),
+          homeConcededW: normalize(hp.map(p => (p.concededGoals ?? 0) / hConceded)),
+          awayScoredW:   normalize(ap.map(p => (p.scoredGoals   ?? 0) / aScored)),
+          awayConcededW: normalize(ap.map(p => (p.concededGoals ?? 0) / aConceded)),
+        };
+      }
+
+      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct1H, awayPosPct1H, homePosPct2H, awayPosPct2H, leagueAvg, homeScoredW, homeConcededW, awayScoredW, awayConcededW) {
         return new Promise((resolve) =>
           setTimeout(() => {
             const N = 100000;
             const scores = {};
-            let homeWins = 0,
-              draws = 0,
-              awayWins = 0,
-              btts = 0;
-            const totalDist = new Array(16).fill(0);
-            const hDist = new Array(12).fill(0);
-            const aDist = new Array(12).fill(0);
-            const homePosBase1H = homePosPct1H / (homePosPct1H + awayPosPct1H);
-            const homePosBase2H = homePosPct2H / (homePosPct2H + awayPosPct2H);
+            const homePosBase1H = (homePosPct1H + awayPosPct1H) > 0 ? homePosPct1H / (homePosPct1H + awayPosPct1H) : 0.5;
+            const homePosBase2H = (homePosPct2H + awayPosPct2H) > 0 ? homePosPct2H / (homePosPct2H + awayPosPct2H) : 0.5;
 
             for (let s = 0; s < N; s++) {
               const dur1H = 45 + Math.floor(Math.random() * 5); // 45-49
               const dur2H = 45 + Math.floor(Math.random() * 8); // 45-52
               const dur = dur1H + dur2H;
-              let hg = 0,
-                ag = 0;
-              let hStreak = 0,
-                aStreak = 0;
+              let hg = 0, ag = 0;
               let posProb = homePosBase1H;
 
+              // Lambda per minut de posesie (normalizat: lambda / (dur * posesie_asteptata))
+              const lhPoss1H = lambdaHome1H / (dur1H * homePosBase1H);
+              const laPoss1H = lambdaAway1H / (dur1H * (1 - homePosBase1H));
+              const lhPoss2H = lambdaHome2H / (dur2H * homePosBase2H);
+              const laPoss2H = lambdaAway2H / (dur2H * (1 - homePosBase2H));
+
               for (let m = 0; m < dur; m++) {
+                const isFirst = m < dur1H;
+                if (m === dur1H) posProb = homePosBase2H;
+
+                // Fluctuație posesie la fiecare 3 minute
                 if (m % 3 === 0) {
-                  const v = (Math.random() - 0.5) * 0.1;
-                  const posBase = m < dur1H ? homePosBase1H : homePosBase2H;
+                  const posBase = isFirst ? homePosBase1H : homePosBase2H;
+                  const v = (Math.random() - 0.5) * 0.08;
                   posProb = Math.max(0.1, Math.min(0.9, posBase + v));
                 }
-                if (Math.random() < posProb) {
-                  hStreak++;
-                  aStreak = 0;
-                } else {
-                  aStreak++;
-                  hStreak = 0;
-                }
 
-                const isFirst = m < dur1H;
-                if (m === dur1H) posProb = homePosBase2H; // reset posesie la repriza 2
-                const lhBase = isFirst ? lambdaHome1H / dur1H : lambdaHome2H / dur2H;
-                const laBase = isFirst ? lambdaAway1H / dur1H : lambdaAway2H / dur2H;
-
+                // Game state — 4 factori independenti (diff = hg - ag: pozitiv = Home conduce)
                 const diff = hg - ag;
-                let lhFactor = 1, laFactor = 1;
-                // Game state — un singur lanț if-else, fără stacking
-                if (diff <= -2)      { lhFactor *= 1.20; laFactor *= 0.92; } // home pierde cu 2+: atacă disperat
-                else if (diff === -1) { lhFactor *= 1.15; laFactor *= 1.02; } // home pierde cu 1: presiune, mici spații
-                else if (diff === 1)  { laFactor *= 1.15; lhFactor *= 1.02; } // away pierde cu 1
-                else if (diff >= 2)   { laFactor *= 1.20; lhFactor *= 0.92; } // away pierde cu 2+
-                // Ultimele 15 minute (min 75+) — un singur factor per caz
-                if (m >= 75) {
-                  if (diff === 0)      { lhFactor *= 1.10; laFactor *= 1.10; }
-                  else if (diff < 0)   { lhFactor *= 1.10; laFactor *= 1.07; }
-                  else                 { laFactor *= 1.10; lhFactor *= 1.07; }
+                // homeXGMult  = cat de mult ataca Home (Home xG)
+                // homeXGAMult = cat de vulnerabila este Home (Home xGA = Away scoring)
+                // awayXGMult  = cat de mult ataca Away (Away xG)
+                // awayXGAMult = cat de vulnerabila este Away (Away xGA = Home scoring)
+                let homeXGMult = 1, homeXGAMult = 1;
+                let awayXGMult = 1, awayXGAMult = 1;
+
+                if (diff === 1) {
+                  // Home conduce cu 1: Home ataca mai putin si se apara usor, Away ataca mai mult si e mai vulnerabila
+                  homeXGMult = 0.96; homeXGAMult = 0.98;
+                  awayXGMult = 1.06; awayXGAMult = 1.05;
+                } else if (diff >= 2) {
+                  // Home conduce cu 2+: Home se apara mult, Away e disperata
+                  homeXGMult = 0.91; homeXGAMult = 0.94;
+                  awayXGMult = 1.22; awayXGAMult = 1.13;
+                } else if (diff === -1) {
+                  // Away conduce cu 1: Away ataca mai putin si se apara usor, Home ataca mai mult si e mai vulnerabila
+                  awayXGMult = 0.96; awayXGAMult = 0.98;
+                  homeXGMult = 1.06; homeXGAMult = 1.05;
+                } else if (diff <= -2) {
+                  // Away conduce cu 2+: Away se apara mult, Home e disperata
+                  awayXGMult = 0.91; awayXGAMult = 0.94;
+                  homeXGMult = 1.22; homeXGAMult = 1.13;
                 }
 
-                // Streak bonus proporțional cu posesia așteptată
-                const hStreakThreshold = Math.max(2, Math.round(3 / posProb));
-                const aStreakThreshold = Math.max(2, Math.round(3 / (1 - posProb)));
-                const lh = lhBase * (hStreak > hStreakThreshold ? 1.15 : 1) * lhFactor;
-                const la = laBase * (aStreak > aStreakThreshold ? 1.15 : 1) * laFactor;
-                if (Math.random() < 1 - Math.exp(-lh)) hg++;
-                if (Math.random() < 1 - Math.exp(-la)) ag++;
+                // Distributii independente per interval (fiecare normalizata separat)
+                // Mapare interval corect cu prelungiri per repriza
+                const intervalIdx = m < dur1H
+                  ? Math.min(Math.floor(m / 15), 2)                          // repriza 1: max interval 2 (31-45')
+                  : Math.min(3 + Math.floor((m - dur1H) / 15), 5);           // repriza 2: intervale 3-5 (46-90')
+                const hScoredW   = homeScoredW   ? homeScoredW[intervalIdx]   : 1;
+                const hConcededW = homeConcededW ? homeConcededW[intervalIdx] : 1;
+                const aScoredW   = awayScoredW   ? awayScoredW[intervalIdx]   : 1;
+                const aConcededW = awayConcededW ? awayConcededW[intervalIdx] : 1;
+
+                // Media geometrica a celor 2 semnale de distributie — evita dublarea informatiei
+                // √(hScoredW × aConcededW): combina "cand marcheaza home" cu "cand primeste away"
+                // √(aScoredW × hConcededW): combina "cand marcheaza away" cu "cand primeste home"
+                const homeDistBoost = Math.sqrt(hScoredW * aConcededW);
+                const awayDistBoost = Math.sqrt(aScoredW * hConcededW);
+
+                const homeHasBall = Math.random() < posProb;
+                if (homeHasBall) {
+                  const lh = (isFirst ? lhPoss1H : lhPoss2H) * homeXGMult * awayXGAMult * homeDistBoost;
+                  if (Math.random() < 1 - Math.exp(-lh)) hg++;
+                } else {
+                  const la = (isFirst ? laPoss1H : laPoss2H) * awayXGMult * homeXGAMult * awayDistBoost;
+                  if (Math.random() < 1 - Math.exp(-la)) ag++;
+                }
               }
 
               const key = `${hg}-${ag}`;
               scores[key] = (scores[key] || 0) + 1;
-              if (hg > ag) homeWins++;
-              else if (hg === ag) draws++;
-              else awayWins++;
-              if (hg > 0 && ag > 0) btts++;
-              const tg = hg + ag;
-              if (tg < totalDist.length) totalDist[tg]++;
-              if (hg < hDist.length) hDist[hg]++;
-              if (ag < aDist.length) aDist[ag]++;
             }
 
             // ── Blend Poisson ligă: calibrare distribuție total goluri ──
@@ -2337,6 +2476,12 @@
         la1,
         la2,
         leagueAvg,
+        homeScoredW,
+        homeConcededW,
+        awayScoredW,
+        awayConcededW,
+        homeGoalDist,
+        awayGoalDist,
       ) {
         function toOdds(pct) {
           if (!pct || pct < 0.5) return "—";
@@ -2401,6 +2546,28 @@
           .map(
             (x) => `
           <div class="sim-1x2-item ${x.p === max1x2 ? "sim-1x2-best" : ""}">
+            <div class="sim-1x2-label">${x.l}</div>
+            <div class="sim-1x2-pct">${x.p.toFixed(1)}%</div>
+            <div class="sim-1x2-odds">${toOdds(x.p)}</div>
+            <div class="sim-1x2-bar-track"><div class="sim-1x2-bar-fill" style="width:${x.p.toFixed(1)}%"></div></div>
+            <div class="sim-1x2-name">${x.n}</div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+    </div>
+
+    <div class="sim-block">
+      <div class="sim-block-title">Șansă dublă</div>
+      <div class="sim-1x2">
+        ${[
+          { l: "1X", n: `${homeName} sau Egal`, p: r.homeWinPct + r.drawPct },
+          { l: "12", n: `${homeName} sau ${awayName}`, p: r.homeWinPct + r.awayWinPct },
+          { l: "X2", n: `Egal sau ${awayName}`, p: r.drawPct + r.awayWinPct },
+        ]
+          .map(
+            (x) => `
+          <div class="sim-1x2-item">
             <div class="sim-1x2-label">${x.l}</div>
             <div class="sim-1x2-pct">${x.p.toFixed(1)}%</div>
             <div class="sim-1x2-odds">${toOdds(x.p)}</div>
@@ -2493,7 +2660,90 @@
             .join("")}
         </div>
       </div>
-    </div>`;
+    </div>
+
+    ${(() => {
+      const intervals = ["0-15'", "16-30'", "31-45'", "46-60'", "61-75'", "76-90'"];
+
+      // Extrage procentele per interval dintr-un array de perioade
+      function toPercents(periods, key) {
+        if (!periods || periods.length === 0) return null;
+        const total = periods.reduce((s, p) => s + (p[key] || 0), 0);
+        if (total === 0) return null;
+        return periods.map(p => (p[key] || 0) / total * 100);
+      }
+
+      // Randează un set de bare (scored sau conceded) cu o culoare dată
+      function barsHtml(pcts, colorClass) {
+        if (!pcts) return `<div class="goal-dist-na">Date indisponibile</div>`;
+        const maxP = Math.max(...pcts);
+        return pcts.map((p, i) => {
+          const isMax = p === maxP;
+          return `<div class="goal-dist-row">
+            <span class="goal-dist-interval">${intervals[i]}</span>
+            <div class="goal-dist-bar-track"><div class="goal-dist-bar-fill ${isMax ? 'gdmax' : ''} ${colorClass}" style="width:${Math.round(p / maxP * 100)}%"></div></div>
+            <span class="goal-dist-pct ${isMax ? 'gdmax' : ''}">${Math.round(p)}%</span>
+          </div>`;
+        }).join('');
+      }
+
+      const homePeriods = homeGoalDist?.goalDistributions?.find(d => d.type === 'home')?.periods;
+      const awayPeriods = awayGoalDist?.goalDistributions?.find(d => d.type === 'away')?.periods;
+
+      const homeScored   = toPercents(homePeriods, 'scoredGoals');
+      const homeConceded = toPercents(homePeriods, 'concededGoals');
+      const awayScored   = toPercents(awayPeriods, 'scoredGoals');
+      const awayConceded = toPercents(awayPeriods, 'concededGoals');
+
+      // Suprapunere: normalizeaza weights la suma 100%
+      // Suprapunere = produsul celor 2 distributii independente per directie (normalizat la %)
+      function overlapPercents(wA, wB) {
+        if (!wA || !wB) return null;
+        const raw = wA.map((v, i) => v * wB[i]);
+        const total = raw.reduce((s, v) => s + v, 0);
+        return total > 0 ? raw.map(v => v / total * 100) : null;
+      }
+      const homeOverlap = overlapPercents(homeScoredW, awayConcededW);
+      const awayOverlap = overlapPercents(awayScoredW, homeConcededW);
+
+      return `
+        <div class="sim-block-row">
+          <div class="sim-block">
+            <div class="sim-block-title">${homeName}</div>
+            <div class="goal-dist-block-title">Marchează</div>
+            ${barsHtml(homeScored, '')}
+            <div class="goal-dist-block-title" style="margin-top:10px">Primește</div>
+            ${barsHtml(homeConceded, 'gd-conceded')}
+          </div>
+          <div class="sim-block">
+            <div class="sim-block-title">${awayName}</div>
+            <div class="goal-dist-block-title">Marchează</div>
+            ${barsHtml(awayScored, '')}
+            <div class="goal-dist-block-title" style="margin-top:10px">Primește</div>
+            ${barsHtml(awayConceded, 'gd-conceded')}
+          </div>
+        </div>
+        <div class="sim-block">
+          <div class="sim-block-title">Suprapunere · când se marchează în meci</div>
+          ${(() => {
+            if (!homeOverlap || !awayOverlap) return `<div class="goal-dist-na">Date indisponibile</div>`;
+            // Combinam probabilitatile celor doua echipe per interval
+            const combined = homeOverlap.map((h, i) => h + awayOverlap[i]);
+            const total = combined.reduce((s, v) => s + v, 0);
+            const maxC  = Math.max(...combined);
+            return intervals.map((label, i) => {
+              const pct   = Math.round(combined[i] / total * 100);
+              const barW  = Math.round(combined[i] / maxC * 100);
+              const isMax = combined[i] === maxC;
+              return `<div class="goal-dist-row">
+                <span class="goal-dist-interval">${label}</span>
+                <div class="goal-dist-bar-track"><div class="goal-dist-bar-fill gd-overlap ${isMax ? 'gdmax' : ''}" style="width:${barW}%"></div></div>
+                <span class="goal-dist-pct ${isMax ? 'gdmax' : ''}">${pct}%</span>
+              </div>`;
+            }).join('');
+          })()}
+        </div>`;
+    })()}`;
       }
 
       let simLoaded = false;
@@ -2554,41 +2804,48 @@
 
         const h2hStats = await Promise.all(h2hMatches.map(e => fetchEventStatistics(e.id)));
 
-        function extractPlayerIds(lineupSide) {
-          if (!lineupSide?.players) return new Set();
-          return new Set(
-            lineupSide.players
-              .filter((p) => !p.substitute)
-              .map((p) => p.player?.id)
-              .filter(Boolean),
-          );
+        const [homeGoalDist, awayGoalDist] = await Promise.all([
+          fetchGoalDistributions(homeTeamId, tournamentId, seasonId),
+          fetchGoalDistributions(awayTeamId, tournamentId, seasonId),
+        ]);
+        const { homeScoredW, homeConcededW, awayScoredW, awayConcededW } = calcGoalDistWeights(homeGoalDist, awayGoalDist);
+
+        function extractLineupIds(lineupSide) {
+          if (!lineupSide?.players) return { starters: new Set(), subs: new Set() };
+          return {
+            starters: new Set(lineupSide.players.filter(p => !p.substitute).map(p => p.player?.id).filter(Boolean)),
+            subs:     new Set(lineupSide.players.filter(p =>  p.substitute).map(p => p.player?.id).filter(Boolean)),
+          };
         }
 
-        const currentHomeIds = extractPlayerIds(currentLineupData?.home);
-        const currentAwayIds = extractPlayerIds(currentLineupData?.away);
+        const currentHomeLineup = extractLineupIds(currentLineupData?.home);
+        const currentAwayLineup = extractLineupIds(currentLineupData?.away);
+        // Set cu toti jucatorii (titulari + rezerve) — folosit pentru calcCombinedSim si verificari .size
+        const currentHomeIds = new Set([...currentHomeLineup.starters, ...currentHomeLineup.subs]);
+        const currentAwayIds = new Set([...currentAwayLineup.starters, ...currentAwayLineup.subs]);
 
         // Ultimele 5 meciuri din campionat: echipa gazdă strict acasă, oaspete strict în deplasare
         const homeFiltered = homeEvents
           .filter(
             (e) =>
-              e.homeTeam?.id === homeTeamId &&
+              (e.homeTeam?.id === homeTeamId || e.awayTeam?.id === homeTeamId) &&
               e.tournament?.uniqueTournament?.id === tournamentId &&
               e.status?.type === "finished" &&
               e.startTimestamp < currentTs,
           )
           .sort((a, b) => b.startTimestamp - a.startTimestamp)
-          .slice(0, 5);
+          .slice(0, 6);
 
         const awayFiltered = awayEvents
           .filter(
             (e) =>
-              e.awayTeam?.id === awayTeamId &&
+              (e.homeTeam?.id === awayTeamId || e.awayTeam?.id === awayTeamId) &&
               e.tournament?.uniqueTournament?.id === tournamentId &&
               e.status?.type === "finished" &&
               e.startTimestamp < currentTs,
           )
           .sort((a, b) => b.startTimestamp - a.startTimestamp)
-          .slice(0, 5);
+          .slice(0, 6);
 
         // PPG map + maxDiff universal per campionat
         const ppgMap = buildPPGMap(standingsRows);
@@ -2624,21 +2881,28 @@
 
         // Fetch statistici pentru toate cele 10 meciuri secvențial
         // side și pastOpp se determină dinamic (poate fi acasă sau deplasare)
-        function calcLineupSim(currentIds, pastLineup, side) {
-          if (currentIds.size === 0) return null;
-          const pastIds = extractPlayerIds(
-            side === "home" ? pastLineup?.home : pastLineup?.away,
-          );
-          if (pastIds.size === 0) return null;
-          let common = 0;
-          for (const id of currentIds) {
-            if (pastIds.has(id)) common++;
-          }
+        function calcLineupSim(currentLineup, pastLineup, side) {
+          const { starters: currStarters, subs: currSubs } = currentLineup;
+          if (currStarters.size === 0) return null;
+          const pastSide = side === "home" ? pastLineup?.home : pastLineup?.away;
+          const { starters: pastStarters, subs: pastSubs } = extractLineupIds(pastSide);
+          const pastAll = new Set([...pastStarters, ...pastSubs]);
+          if (pastAll.size === 0) return null;
+          // Titulari curent vs toti jucatorii din meciul trecut
+          let matchedStarters = 0;
+          for (const id of currStarters) if (pastAll.has(id)) matchedStarters++;
+          // Rezerve curent vs toti jucatorii din meciul trecut
+          let matchedSubs = 0;
+          for (const id of currSubs) if (pastAll.has(id)) matchedSubs++;
+          // Scor ponderat: 70% titulari, 30% rezerve
+          const starterScore = currStarters.size > 0 ? matchedStarters / currStarters.size : 0;
+          const subScore     = currSubs.size     > 0 ? matchedSubs     / currSubs.size     : 0;
+          const pct = Math.round((starterScore * 0.70 + subScore * 0.30) * 100);
           return {
-            pct: Math.round((common / currentIds.size) * 100),
-            common,
-            total: currentIds.size,
-            pastIds,
+            pct,
+            common: matchedStarters + matchedSubs,
+            total:  currStarters.size + currSubs.size,
+            pastIds: pastAll,
           };
         }
 
@@ -2670,7 +2934,7 @@
           const pastOpp = isHome ? e.awayTeam : e.homeTeam;
           const ppgPast = pastOpp ? ppgMap[pastOpp.id] : null;
           const factor = calcAdjustment(ppgActualOppHome, ppgPast, maxDiff);
-          const lineupSim = calcLineupSim(currentHomeIds, pastLineup, side);
+          const lineupSim = calcLineupSim(currentHomeLineup, pastLineup, side);
           homeData.push({
             event: e,
             stats,
@@ -2701,7 +2965,7 @@
           const pastOpp = isAway ? e.homeTeam : e.awayTeam;
           const ppgPast = pastOpp ? ppgMap[pastOpp.id] : null;
           const factor = calcAdjustment(ppgActualOppAway, ppgPast, maxDiff);
-          const lineupSim = calcLineupSim(currentAwayIds, pastLineup, side);
+          const lineupSim = calcLineupSim(currentAwayLineup, pastLineup, side);
           awayData.push({
             event: e,
             stats,
@@ -2718,18 +2982,19 @@
 
 
         // ── Ponderi per meci: doar recență, normalizat ──
-        const RECENCY_W = [0.50, 0.35, 0.08, 0.05, 0.02]; // index 0 = cel mai recent
+        const RECENCY_W = [0.37, 0.24, 0.16, 0.11, 0.07, 0.05]; // index 0 = cel mai recent — raport ~7.5:1
 
-        // Pondere suplimentară bazată pe semnificația rezultatului față de adversar
-        // Rezultat surprinzător (victorie cu mai puternic, înfrângere cu mai slab) → greutate mai mare
+        // Pondere suplimentară bazată pe semnificația rezultatului față de adversar — raport ~5:1
         const SIGNIFICANCE_W = {
-          weaker:   { W: 0.75, D: 0.80, L: 0.90 },
-          similar:  { W: 1.50, D: 1.50, L: 1.50 },
-          stronger: { W: 1.10, D: 1.00, L: 0.80 },
+          weaker:   { W: 0.50, D: 0.64, L: 0.82 },
+          similar:  { W: 2.10, D: 2.10, L: 2.10 },
+          stronger: { W: 1.27, D: 1.09, L: 0.60 },
         };
         const THRESHOLD_PCT = 0.20; // 20% din maxDiff pentru a distinge categorii
 
-        function calcMatchWeights(dataArr, ppgActualOpp) {
+        const VENUE_W = { boost: 1.35, penalty: 0.74 }; // același teren → 1.35, teren diferit → 0.74 — raport 1.82:1
+
+        function calcMatchWeights(dataArr, ppgActualOpp, preferredSide) {
           dataArr.forEach((d, i) => {
             const recency = RECENCY_W[i] ?? RECENCY_W[RECENCY_W.length - 1];
             // Determină rezultat
@@ -2747,17 +3012,19 @@
               if (diff < -threshold) category = 'weaker';
               else if (diff > threshold) category = 'stronger';
             }
-            const sigMult = SIGNIFICANCE_W[category]?.[result] ?? 1.0;
-            d.weight = recency * sigMult;
+            const sigMult  = SIGNIFICANCE_W[category]?.[result] ?? 1.0;
+            const venueMult = d.side === preferredSide ? VENUE_W.boost : VENUE_W.penalty;
+            d.weight      = recency * sigMult * venueMult;
             d.sigCategory = category;
             d.sigResult   = result;
             d.sigMult     = sigMult;
+            d.venueMult   = venueMult;
           });
         }
 
         // ── H2H lambda cu ponderi recență (xG/xGA per repriză) ──
         const H2H_XG_BLEND = 0.70; // blend xG ↔ goluri reale pentru meciurile H2H
-        const H2H_RECENCY_W = [0.50, 0.35, 0.08, 0.05, 0.02]; // sumă = 1.00
+        const H2H_RECENCY_W = [0.50, 0.40, 0.05, 0.03, 0.02]; // sumă = 1.00
         function calcH2HLambdas(matches, statsArr, hTeamId) {
           if (!matches || matches.length === 0) return null;
           const H2H_VENUE_BOOST   = 1.30;
@@ -2848,8 +3115,8 @@
           };
         }
 
-        calcMatchWeights(homeData, ppgActualOppHome);
-        calcMatchWeights(awayData, ppgActualOppAway);
+        calcMatchWeights(homeData, ppgActualOppHome, 'home');
+        calcMatchWeights(awayData, ppgActualOppAway, 'away');
 
 
         // Helper: bloc meci
@@ -3075,7 +3342,7 @@
           return `<div class="sim-combined-sim ${cls}">
       <span class="sim-combined-label">Continuitate lineup</span>
       <span class="sim-combined-pct">${combined.pct}%</span>
-      <span class="sim-combined-detail">${combined.seen} din ${combined.total} jucători au jucat în cel puțin 3 din ultimele 5 meciuri</span>
+      <span class="sim-combined-detail">${combined.seen} din ${combined.total} jucători au jucat în cel puțin 3 din ultimele 6 meciuri</span>
     </div>`;
         }
 
@@ -3306,6 +3573,26 @@
         const leagueTotalMatches = standingsRows.reduce((s, r) => s + (r.matches ?? 0), 0) / 2;
         const leagueAvg = leagueTotalMatches > 0 ? leagueTotalGoals / leagueTotalMatches : 0;
 
+        // Media golurilor totale din forma recentă a celor două echipe
+        const homeFormTotalGoals = wAvg(homeData, "goalsScored") + wAvg(homeData, "goalsConceded");
+        const awayFormTotalGoals = wAvg(awayData, "goalsScored") + wAvg(awayData, "goalsConceded");
+        const teamFormAvg = (homeFormTotalGoals + awayFormTotalGoals) / 2;
+
+        // Media golurilor totale din H2H (recency weighted)
+        let h2hGoalsW = 0, h2hTotalW = 0;
+        h2hMatches.forEach((e, i) => {
+          const w = H2H_RECENCY_W[i] ?? H2H_RECENCY_W[H2H_RECENCY_W.length - 1];
+          const total = (e.homeScore?.display ?? 0) + (e.awayScore?.display ?? 0);
+          h2hGoalsW += total * w;
+          h2hTotalW += w;
+        });
+        const h2hAvgGoals = h2hTotalW > 0 ? h2hGoalsW / h2hTotalW : null;
+
+        // Calibration lambda: blend ligă 20% + H2H 40% + formă recentă 40%
+        const calibrationLambda = h2hAvgGoals != null
+          ? leagueAvg * 0.20 + h2hAvgGoals * 0.40 + teamFormAvg * 0.40
+          : leagueAvg * 0.30 + teamFormAvg * 0.70;
+
         const simResultsSection = document.getElementById("simResultsSection");
         simResultsSection.innerHTML = `<div class="sim-results-loading"><div class="spinner"></div><span>Se rulează simularea (100.000 meciuri)...</span></div>`;
 
@@ -3318,7 +3605,11 @@
           awayAvgPosFinal1H,
           homeAvgPosFinal2H,
           awayAvgPosFinal2H,
-          leagueAvg,
+          calibrationLambda,
+          homeScoredW,
+          homeConcededW,
+          awayScoredW,
+          awayConcededW,
         );
         simResultsSection.innerHTML = renderSimResults(
           r,
@@ -3331,6 +3622,12 @@
           lambdaAway1HFinal,
           lambdaAway2HFinal,
           leagueAvg,
+          homeScoredW,
+          homeConcededW,
+          awayScoredW,
+          awayConcededW,
+          homeGoalDist,
+          awayGoalDist,
         );
       }
 
