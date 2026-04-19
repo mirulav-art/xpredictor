@@ -2374,12 +2374,15 @@
         };
       }
 
-      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct1H, awayPosPct1H, homePosPct2H, awayPosPct2H, leagueAvg, homeScoredW, homeConcededW, awayScoredW, awayConcededW) {
+      function runMonteCarlo(lambdaHome1H, lambdaHome2H, lambdaAway1H, lambdaAway2H, homePosPct1H, awayPosPct1H, homePosPct2H, awayPosPct2H, leagueAvg, homeScoredW, homeConcededW, awayScoredW, awayConcededW, homeFoulRate1H, homeFoulRate2H, awayFoulRate1H, awayFoulRate2H, homeYellowRate1H, homeYellowRate2H, awayYellowRate1H, awayYellowRate2H) {
         return new Promise((resolve) =>
           setTimeout(() => {
             const N = 100000;
             const scores = {};
             const htft = {};
+            let homeFoulsTotal = 0, awayFoulsTotal = 0;
+            let homeYellowsTotal = 0, awayYellowsTotal = 0;
+            let homePossTotal = 0, totalMinutes = 0;
             const homePosBase1H = (homePosPct1H + awayPosPct1H) > 0 ? homePosPct1H / (homePosPct1H + awayPosPct1H) : 0.5;
             const homePosBase2H = (homePosPct2H + awayPosPct2H) > 0 ? homePosPct2H / (homePosPct2H + awayPosPct2H) : 0.5;
 
@@ -2389,12 +2392,15 @@
               const dur = dur1H + dur2H;
               let hg = 0, ag = 0, htHg = 0, htAg = 0;
               let posProb = homePosBase1H;
+              let forcePossession = null; // 'home' | 'away' | null
+              let homeFouls = 0, awayFouls = 0, homeYellows = 0, awayYellows = 0;
+              let homePosCount = 0;
 
-              // Lambda per minut de posesie (normalizat: lambda / (dur * posesie_asteptata))
-              const lhPoss1H = lambdaHome1H / (dur1H * homePosBase1H);
-              const laPoss1H = lambdaAway1H / (dur1H * (1 - homePosBase1H));
-              const lhPoss2H = lambdaHome2H / (dur2H * homePosBase2H);
-              const laPoss2H = lambdaAway2H / (dur2H * (1 - homePosBase2H));
+              // Lambda per minut de posesie (normalizat la 45 fix — prelungirile rulează dar nu dilueaza rata)
+              const lhPoss1H = lambdaHome1H / (45 * homePosBase1H);
+              const laPoss1H = lambdaAway1H / (45 * (1 - homePosBase1H));
+              const lhPoss2H = lambdaHome2H / (45 * homePosBase2H);
+              const laPoss2H = lambdaAway2H / (45 * (1 - homePosBase2H));
 
               for (let m = 0; m < dur; m++) {
                 const isFirst = m < dur1H;
@@ -2450,15 +2456,35 @@
                 const homeDistBoost = Math.sqrt(hScoredW * aConcededW);
                 const awayDistBoost = Math.sqrt(aScoredW * hConcededW);
 
-                const homeHasBall = Math.random() < posProb;
+                const homeHasBall = forcePossession !== null ? forcePossession === 'home' : Math.random() < posProb;
+                forcePossession = null;
+                if (homeHasBall) homePosCount++;
+                const homeFR = isFirst ? (homeFoulRate1H || 0) : (homeFoulRate2H || 0);
+                const awayFR = isFirst ? (awayFoulRate1H || 0) : (awayFoulRate2H || 0);
+                const homeYR = isFirst ? (homeYellowRate1H || 0) : (homeYellowRate2H || 0);
+                const awayYR = isFirst ? (awayYellowRate1H || 0) : (awayYellowRate2H || 0);
+
                 if (homeHasBall) {
+                  // Home atacă → doar Away poate faulta (apără) — independent de tentativa de gol
+                  if (Math.random() < awayFR) { awayFouls++; forcePossession = 'home'; }
+                  if (Math.random() < awayYR) awayYellows++;
                   const lh = (isFirst ? lhPoss1H : lhPoss2H) * homeXGMult * awayXGAMult * homeDistBoost;
                   if (Math.random() < 1 - Math.exp(-lh)) hg++;
                 } else {
+                  // Away atacă → doar Home poate faulta (apără) — independent de tentativa de gol
+                  if (Math.random() < homeFR) { homeFouls++; forcePossession = 'away'; }
+                  if (Math.random() < homeYR) homeYellows++;
                   const la = (isFirst ? laPoss1H : laPoss2H) * awayXGMult * homeXGAMult * awayDistBoost;
                   if (Math.random() < 1 - Math.exp(-la)) ag++;
                 }
               }
+
+              homeFoulsTotal   += homeFouls;
+              awayFoulsTotal   += awayFouls;
+              homeYellowsTotal += homeYellows;
+              awayYellowsTotal += awayYellows;
+              homePossTotal    += homePosCount;
+              totalMinutes     += dur;
 
               const key = `${hg}-${ag}`;
               scores[key] = (scores[key] || 0) + 1;
@@ -2522,6 +2548,11 @@
               hDist: dcHDist.map((c) => (c / dcN) * 100),
               aDist: dcADist.map((c) => (c / dcN) * 100),
               htftPcts,
+              homeAvgFoulsSim:   homeFoulsTotal   / N,
+              awayAvgFoulsSim:   awayFoulsTotal   / N,
+              homeAvgYellowsSim: homeYellowsTotal / N,
+              awayAvgYellowsSim: awayYellowsTotal / N,
+              homeAvgPosSimPct:  totalMinutes > 0 ? (homePossTotal / totalMinutes) * 100 : 50,
             });
           }, 0),
         );
@@ -2669,22 +2700,17 @@
 
     ${leagueAvg > 0 ? (() => {
       const λ = leagueAvg;
-      const poissonP = k => Math.pow(λ, k) * Math.exp(-λ) / [1,1,2,6][k];
-      const p0 = poissonP(0), p1 = poissonP(1), p2 = poissonP(2), p3 = poissonP(3);
-      const items = [
-        { label: '0 goluri',    pct: p0 * 100 },
-        { label: 'Over 0.5',   pct: (1 - p0) * 100 },
-        { label: 'Over 1.5',   pct: (1 - p0 - p1) * 100 },
-        { label: 'Over 2.5',   pct: (1 - p0 - p1 - p2) * 100 },
-        { label: 'Over 3.5',   pct: (1 - p0 - p1 - p2 - p3) * 100 },
-      ];
+      const fact = [1,1,2,6,24,120,720];
+      const poissonP = k => k < fact.length ? Math.pow(λ, k) * Math.exp(-λ) / fact[k] : 0;
+      const items = [0,1,2,3,4,5,6].map(k => ({ label: `${k} goluri`, pct: poissonP(k) * 100 }));
+      const maxPct = Math.max(...items.map(i => i.pct));
       return `<div class="sim-block">
         <div class="sim-block-title">Referință ligă · Medie ${λ.toFixed(2)} goluri/meci · Poisson</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;padding:4px 0">
           ${items.map(it => `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;background:${it.pct === maxPct ? 'rgba(37,99,235,0.08)' : 'var(--surface2)'};border:1px solid ${it.pct === maxPct ? 'rgba(37,99,235,0.3)' : 'var(--border)'};border-radius:8px;padding:8px 10px">
               <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">${it.label}</span>
-              <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--text)">${it.pct.toFixed(1)}%</span>
+              <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)">${it.pct.toFixed(1)}%</span>
               <span style="font-size:11px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 6px">${toOdds(it.pct)}</span>
             </div>`).join('')}
         </div>
@@ -2749,6 +2775,56 @@
         </div>
       </div>
     </div>
+
+    <div class="sim-block">
+      <div class="sim-block-title">Posesie medie · simulare</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;gap:2px">
+          <span style="font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${homeName}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--accent)">${r.homeAvgPosSimPct.toFixed(1)}%</span>
+        </div>
+        <div style="flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden;display:flex">
+          <div style="height:100%;width:${r.homeAvgPosSimPct.toFixed(1)}%;background:var(--accent);transition:width 0.3s"></div>
+          <div style="height:100%;flex:1;background:var(--accent2)"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:80px;gap:2px">
+          <span style="font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${awayName}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--accent2)">${(100 - r.homeAvgPosSimPct).toFixed(1)}%</span>
+        </div>
+      </div>
+    </div>
+
+    ${(r.homeAvgFoulsSim > 0 || r.awayAvgFoulsSim > 0 || r.homeAvgYellowsSim > 0 || r.awayAvgYellowsSim > 0) ? `
+    <div class="sim-block">
+      <div class="sim-block-title">Faulturi & Cartonașe Galbene · medie per meci · simulare</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 0">
+        ${[
+          { label: 'Faulturi comise', home: r.homeAvgFoulsSim, away: r.awayAvgFoulsSim },
+          { label: 'Cartonașe galbene', home: r.homeAvgYellowsSim, away: r.awayAvgYellowsSim },
+        ].map(({ label, home, away }) => {
+          const maxVal = Math.max(home, away, 0.1);
+          return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px">${label}</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:11px;font-weight:600;color:var(--text);min-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${homeName}</span>
+                <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${(home/maxVal*100).toFixed(0)}%;background:var(--accent);border-radius:3px"></div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--accent);min-width:28px;text-align:right">${home.toFixed(1)}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:11px;font-weight:600;color:var(--text);min-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${awayName}</span>
+                <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${(away/maxVal*100).toFixed(0)}%;background:var(--accent2);border-radius:3px"></div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--accent2);min-width:28px;text-align:right">${away.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
 
     ${(() => {
       const intervals = ["0-15'", "16-30'", "31-45'", "46-60'", "61-75'", "76-90'"];
@@ -2904,7 +2980,6 @@
         const currentHomeIds = new Set([...currentHomeLineup.starters, ...currentHomeLineup.subs]);
         const currentAwayIds = new Set([...currentAwayLineup.starters, ...currentAwayLineup.subs]);
 
-        // Ultimele 5 meciuri din campionat: echipa gazdă strict acasă, oaspete strict în deplasare
         const homeFiltered = homeEvents
           .filter(
             (e) =>
@@ -3111,6 +3186,8 @@
           const H2H_VENUE_PENALTY = 0.70;
           let wHome1H = 0, wHome2H = 0, wAway1H = 0, wAway2H = 0;
           let wHomePoss = 0, wAwayPoss = 0, wHomePoss1H = 0, wAwayPoss1H = 0, wHomePoss2H = 0, wAwayPoss2H = 0;
+          let wHomeFouls1H = 0, wHomeFouls2H = 0, wAwayFouls1H = 0, wAwayFouls2H = 0;
+          let wHomeYellows1H = 0, wHomeYellows2H = 0, wAwayYellows1H = 0, wAwayYellows2H = 0;
           let wTotal = 0;
           matches.forEach((e, i) => {
             const recencyW = H2H_RECENCY_W[i] ?? H2H_RECENCY_W[H2H_RECENCY_W.length - 1];
@@ -3178,6 +3255,29 @@
             wAwayPoss1H += oppPoss1H * w;
             wHomePoss2H += myPoss2H  * w;
             wAwayPoss2H += oppPoss2H * w;
+
+            const myFouls     = getVal(s, "fouls", mySide)  ?? 0;
+            const oppFouls    = getVal(s, "fouls", oppSide) ?? 0;
+            const myFouls1H   = getValByPeriod(s, "fouls", mySide,  "1ST") ?? myFouls  * 0.47;
+            const myFouls2H   = getValByPeriod(s, "fouls", mySide,  "2ND") ?? myFouls  * 0.53;
+            const oppFouls1H  = getValByPeriod(s, "fouls", oppSide, "1ST") ?? oppFouls * 0.47;
+            const oppFouls2H  = getValByPeriod(s, "fouls", oppSide, "2ND") ?? oppFouls * 0.53;
+            wHomeFouls1H += myFouls1H  * w;
+            wHomeFouls2H += myFouls2H  * w;
+            wAwayFouls1H += oppFouls1H * w;
+            wAwayFouls2H += oppFouls2H * w;
+
+            const myYellows    = getVal(s, "yellowCards", mySide)  ?? 0;
+            const oppYellows   = getVal(s, "yellowCards", oppSide) ?? 0;
+            const myYellows1H  = getValByPeriod(s, "yellowCards", mySide,  "1ST") ?? myYellows  * 0.47;
+            const myYellows2H  = getValByPeriod(s, "yellowCards", mySide,  "2ND") ?? myYellows  * 0.53;
+            const oppYellows1H = getValByPeriod(s, "yellowCards", oppSide, "1ST") ?? oppYellows * 0.47;
+            const oppYellows2H = getValByPeriod(s, "yellowCards", oppSide, "2ND") ?? oppYellows * 0.53;
+            wHomeYellows1H += myYellows1H  * w;
+            wHomeYellows2H += myYellows2H  * w;
+            wAwayYellows1H += oppYellows1H * w;
+            wAwayYellows2H += oppYellows2H * w;
+
             wTotal  += w;
           });
           if (wTotal === 0) return null;
@@ -3192,6 +3292,14 @@
             awayPoss1H: wAwayPoss1H / wTotal,
             homePoss2H: wHomePoss2H / wTotal,
             awayPoss2H: wAwayPoss2H / wTotal,
+            homeFouls1H:  wHomeFouls1H  / wTotal,
+            homeFouls2H:  wHomeFouls2H  / wTotal,
+            awayFouls1H:  wAwayFouls1H  / wTotal,
+            awayFouls2H:  wAwayFouls2H  / wTotal,
+            homeYellows1H: wHomeYellows1H / wTotal,
+            homeYellows2H: wHomeYellows2H / wTotal,
+            awayYellows1H: wAwayYellows1H / wTotal,
+            awayYellows2H: wAwayYellows2H / wTotal,
           };
         }
 
@@ -3329,7 +3437,14 @@
           const goalsConceded1H = (side === "home" ? (ev.awayScore?.period1 ?? 0) : (ev.homeScore?.period1 ?? 0)) * concededScale;
           const goalsConceded2H = (side === "home" ? (ev.awayScore?.period2 ?? 0) : (ev.homeScore?.period2 ?? 0)) * concededScale;
 
-          return { possession, possession1H, possession2H, xG, xGA, xG1H, xG2H, xGA1H, xGA2H, goalsScored, goalsConceded, goalsScored1H, goalsScored2H, goalsConceded1H, goalsConceded2H };
+          const fouls = getVal(s, "fouls", side) ?? 0;
+          const fouls1H = getValByPeriod(s, "fouls", side, "1ST") ?? fouls * 0.47;
+          const fouls2H = getValByPeriod(s, "fouls", side, "2ND") ?? fouls * 0.53;
+          const yellowCards = getVal(s, "yellowCards", side) ?? 0;
+          const yellowCards1H = getValByPeriod(s, "yellowCards", side, "1ST") ?? yellowCards * 0.47;
+          const yellowCards2H = getValByPeriod(s, "yellowCards", side, "2ND") ?? yellowCards * 0.53;
+
+          return { possession, possession1H, possession2H, xG, xGA, xG1H, xG2H, xGA1H, xGA2H, goalsScored, goalsConceded, goalsScored1H, goalsScored2H, goalsConceded1H, goalsConceded2H, fouls, fouls1H, fouls2H, yellowCards, yellowCards1H, yellowCards2H };
         }
 
         // Afișare verificare statistici ajustate + similaritate lineup + pondere
@@ -3364,7 +3479,7 @@
         }
 
         // Adaugă statisticile ajustate în interiorul fiecărui sim-match-entry
-        document.querySelectorAll(".sim-match-entry").forEach((entry, i) => {
+        document.getElementById("simVerifySection").querySelectorAll(".sim-match-entry").forEach((entry, i) => {
           const isHome = i < homeData.length;
           const d = isHome ? homeData[i] : awayData[i - homeData.length];
           if (d.stats) {
@@ -3426,7 +3541,7 @@
     </div>`;
         }
 
-        const groups = document.querySelectorAll(".sim-verify-group");
+        const groups = document.getElementById("simVerifySection").querySelectorAll(".sim-verify-group");
         if (groups[0])
           groups[0].insertAdjacentHTML(
             "beforeend",
@@ -3658,6 +3773,31 @@
         const awayFormTotalGoals = wAvg(awayData, "goalsScored") + wAvg(awayData, "goalsConceded");
         const teamFormAvg = (homeFormTotalGoals + awayFormTotalGoals) / 2;
 
+        // Media faulturi și cartonașe galbene per repriză (forma recentă)
+        const homeAvgFouls   = wAvg(homeData, "fouls");
+        const homeAvgFouls1H = wAvg(homeData, "fouls1H") || homeAvgFouls * 0.47;
+        const homeAvgFouls2H = wAvg(homeData, "fouls2H") || homeAvgFouls * 0.53;
+        const awayAvgFouls   = wAvg(awayData, "fouls");
+        const awayAvgFouls1H = wAvg(awayData, "fouls1H") || awayAvgFouls * 0.47;
+        const awayAvgFouls2H = wAvg(awayData, "fouls2H") || awayAvgFouls * 0.53;
+        const homeAvgYellows   = wAvg(homeData, "yellowCards");
+        const homeAvgYellows1H = wAvg(homeData, "yellowCards1H") || homeAvgYellows * 0.47;
+        const homeAvgYellows2H = wAvg(homeData, "yellowCards2H") || homeAvgYellows * 0.53;
+        const awayAvgYellows   = wAvg(awayData, "yellowCards");
+        const awayAvgYellows1H = wAvg(awayData, "yellowCards1H") || awayAvgYellows * 0.47;
+        const awayAvgYellows2H = wAvg(awayData, "yellowCards2H") || awayAvgYellows * 0.53;
+
+        // Faulturi/cartonașe: 60% formă recentă + 40% H2H
+        const H2H_FOULS_BLEND = 0.40;
+        const homeAvgFouls1HFinal = h2hL?.homeFouls1H  ? homeAvgFouls1H   * (1 - H2H_FOULS_BLEND) + h2hL.homeFouls1H  * H2H_FOULS_BLEND : homeAvgFouls1H;
+        const homeAvgFouls2HFinal = h2hL?.homeFouls2H  ? homeAvgFouls2H   * (1 - H2H_FOULS_BLEND) + h2hL.homeFouls2H  * H2H_FOULS_BLEND : homeAvgFouls2H;
+        const awayAvgFouls1HFinal = h2hL?.awayFouls1H  ? awayAvgFouls1H   * (1 - H2H_FOULS_BLEND) + h2hL.awayFouls1H  * H2H_FOULS_BLEND : awayAvgFouls1H;
+        const awayAvgFouls2HFinal = h2hL?.awayFouls2H  ? awayAvgFouls2H   * (1 - H2H_FOULS_BLEND) + h2hL.awayFouls2H  * H2H_FOULS_BLEND : awayAvgFouls2H;
+        const homeAvgYellows1HFinal = h2hL?.homeYellows1H ? homeAvgYellows1H * (1 - H2H_FOULS_BLEND) + h2hL.homeYellows1H * H2H_FOULS_BLEND : homeAvgYellows1H;
+        const homeAvgYellows2HFinal = h2hL?.homeYellows2H ? homeAvgYellows2H * (1 - H2H_FOULS_BLEND) + h2hL.homeYellows2H * H2H_FOULS_BLEND : homeAvgYellows2H;
+        const awayAvgYellows1HFinal = h2hL?.awayYellows1H ? awayAvgYellows1H * (1 - H2H_FOULS_BLEND) + h2hL.awayYellows1H * H2H_FOULS_BLEND : awayAvgYellows1H;
+        const awayAvgYellows2HFinal = h2hL?.awayYellows2H ? awayAvgYellows2H * (1 - H2H_FOULS_BLEND) + h2hL.awayYellows2H * H2H_FOULS_BLEND : awayAvgYellows2H;
+
         // Media golurilor totale din H2H (recency weighted)
         let h2hGoalsW = 0, h2hTotalW = 0;
         h2hMatches.forEach((e, i) => {
@@ -3690,6 +3830,23 @@
           homeConcededW,
           awayScoredW,
           awayConcededW,
+          // Faulturi/galbene: rate per minut de posesie adversă (echipa faultează doar când apără)
+          // home faultează când away are bila → fracție timp away = 1 - homePosBase
+          // away faultează când home are bila → fracție timp home = homePosBase
+          ...((() => {
+            const hb1 = (homeAvgPosFinal1H + awayAvgPosFinal1H) > 0 ? homeAvgPosFinal1H / (homeAvgPosFinal1H + awayAvgPosFinal1H) : 0.5;
+            const hb2 = (homeAvgPosFinal2H + awayAvgPosFinal2H) > 0 ? homeAvgPosFinal2H / (homeAvgPosFinal2H + awayAvgPosFinal2H) : 0.5;
+            return [
+              homeAvgFouls1HFinal   / (45 * Math.max(0.1, 1 - hb1)),
+              homeAvgFouls2HFinal   / (45 * Math.max(0.1, 1 - hb2)),
+              awayAvgFouls1HFinal   / (45 * Math.max(0.1, hb1)),
+              awayAvgFouls2HFinal   / (45 * Math.max(0.1, hb2)),
+              homeAvgYellows1HFinal / (45 * Math.max(0.1, 1 - hb1)),
+              homeAvgYellows2HFinal / (45 * Math.max(0.1, 1 - hb2)),
+              awayAvgYellows1HFinal / (45 * Math.max(0.1, hb1)),
+              awayAvgYellows2HFinal / (45 * Math.max(0.1, hb2)),
+            ];
+          })()),
         );
         simResultsSection.innerHTML = renderSimResults(
           r,
